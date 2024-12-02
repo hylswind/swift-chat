@@ -24,10 +24,11 @@ macOS platforms.
 
 ![](/assets/architecture.png)
 
-By default, we use AWS App Runner, which is commonly used to host Python FastAPI servers, offering high performance,
+By default, we use **AWS App Runner**, which is commonly used to host Python FastAPI servers, offering high performance,
 scalability and low latency.
 
-Alternatively, we provide the option to replace App Runner with AWS Lambda using Function URL for a more cost-effective
+Alternatively, we provide the option to replace App Runner with **AWS Lambda** using Function URL for a more
+cost-effective
 solution, as shown in
 this [example](https://github.com/awslabs/aws-lambda-web-adapter/tree/main/examples/fastapi-response-streaming).
 
@@ -46,25 +47,28 @@ enable your models.
 
 ### Step 1: Set up your API Key
 
-1. Right-click [Parameter Store](https://console.aws.amazon.com/systems-manager/parameters/) to open your AWS Console in
-   new window.
+1. Sign in to your AWS console and
+   right-click [Parameter Store](https://console.aws.amazon.com/systems-manager/parameters/) to open it in a new tab.
 2. Check whether you are in the [supported region](#supported-region), then click on the **Create parameter** button.
-3. Fill the parameters below, leaving other options as default.
-    * **Name**: Enter a name for your parameter (e.g., "SwiftChatAPIKey", this is `ApiKeyParam` you will fill
-      in [Step2](#step-2-deploy-stack-and-get-your-api-url)).
-    * **Type**: Select `SecureString`.
-    * **Value**: Any string without spaces (This is the `API Key` you'll need to configure your App
-      in [Step 3](#step-3-download-the-app-and-setup-with-api-url-and-api-key)).
+3. Fill in the parameters below, leaving other options as default:
+
+    * **Name**: Enter a parameter name (e.g., "SwiftChatAPIKey", will be used as `ApiKeyParam` in Step 2).
+
+    * **Type**: Select `SecureString`
+
+    * **Value**: Enter any string without spaces.(this will be your `API Key` in Step 3)
+
 4. Click **Create parameter**.
 
 ### Step 2: Deploy stack and get your API URL
 
-1. Click the following button to launch the CloudFormation Stack in the same region with your API Key just created.
-    - App Runner
+1. Click one of the following buttons to launch the CloudFormation Stack in the same region where your API Key was
+   created.
+    - **App Runner**
 
       [![Launch Stack](assets/launch-stack.png)](https://console.aws.amazon.com/cloudformation/home#/stacks/create/template?stackName=SwiftChatAPI&templateURL=https://aws-gcr-solutions.s3.amazonaws.com/swift-chat/latest/SwiftChatAppRunner.template)
 
-    - Lambda (Note: Make sure your AWS account allows public Lambda Function URL)
+    - **Lambda** (Note: For AWS customer use only)
 
       [![Launch Stack](assets/launch-stack.png)](https://console.aws.amazon.com/cloudformation/home#/stacks/create/template?stackName=SwiftChatLambda&templateURL=https://aws-gcr-solutions.s3.amazonaws.com/swift-chat/latest/SwiftChatLambda.template)
 
@@ -124,7 +128,7 @@ Congratulations 🎉 Your SwiftChat App is ready to use!
 
 ### Image Features
 
-- [x] Support image generation with Chinese prompts
+- [x] Support image generation with Chinese prompts(Make sure `Claude 3 Haiku` is enabled in your selected region)
 - [x] View and zoom generated images
 - [x] Long press images to save or share
 - [x] Automatic image compression to optimize token usage
@@ -173,7 +177,7 @@ Congratulations 🎉 Your SwiftChat App is ready to use!
 - No data collection
 - Privacy-first approach
 
-## App Build and development
+## App Build and Development
 
 First, clone this repository. All app code is located in the `react-native` folder. Before proceeding, execute the
 following command to download dependencies.

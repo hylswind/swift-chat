@@ -23,9 +23,9 @@ macOS 等多个平台。
 
 ![](/assets/architecture.png)
 
-默认情况下，我们使用 AWS App Runner（通常用于托管 Python FastAPI 服务器），提供高性能、可扩展性和低延迟。
+默认情况下，我们使用 **AWS App Runner**（通常用于托管 Python FastAPI 服务器），提供高性能、可扩展性和低延迟。
 
-另外，我们提供使用 AWS Lambda 的 Function URL 替代 App Runner
+另外，我们提供使用 **AWS Lambda** 的 Function URL 替代 App Runner
 的选项，以获得更具成本效益的解决方案，如 [示例](https://github.com/awslabs/aws-lambda-web-adapter/tree/main/examples/fastapi-response-streaming)
 所示。
 
@@ -44,24 +44,22 @@ macOS 等多个平台。
 
 ### 第1步: 设置API Key
 
-1. 右键点击 [Parameter Store](https://console.aws.amazon.com/systems-manager/parameters/) 在新窗口中打开 AWS 控制台。
+1. 登录您的 AWS 控制台并右键点击 [Parameter Store](https://console.aws.amazon.com/systems-manager/parameters/) 在新窗口中打开。
 2. 检查您是否在 [支持的区域](#支持的区域)，然后点击 **创建参数** 按钮。
 3. 完成以下参数填写，其他选项保持默认：
-    * **名称**：为您的参数输入描述性名称(例如 "SwiftChatAPIKey"，这是您将在 [第2步](#第2步-部署堆栈并获取api-url)
-      中填写的`ApiKeyParam`)。
+    * **名称**：输入参数名称(例如 "SwiftChatAPIKey"，该名称将在步骤2中用作 `ApiKeyParam`)。
     * **类型**：选择 `SecureString`。
-    * **值**：任何不含空格的字符串（这是您需要在 [第3步](#第3步-下载应用并设置-api-url-和-api-key) 中配置 App
-      的 `API Key`）。
+    * **值**：任何不含空格的字符串（该值将在步骤 3 的应用设置中作为 `API Key` 使用）。
 4. 点击 **创建参数**。
 
 ### 第2步: 部署堆栈并获取API URL
 
-1. 点击以下按钮在与刚才创建的 API Key 相同的区域启动 CloudFormation 堆栈。
-    - App Runner
+1. 点击以下按钮中的一个，在 API Key 所在区域启动 CloudFormation 堆栈。
+    - **App Runner**
 
       [![启动堆栈](assets/launch-stack.png)](https://console.aws.amazon.com/cloudformation/home#/stacks/create/template?stackName=SwiftChatAPI&templateURL=https://aws-gcr-solutions.s3.amazonaws.com/swift-chat/latest/SwiftChatAppRunner.template)
 
-    - Lambda (提示：请确保你的 AWS 账户允许公开 Lambda Function URL)
+    - **Lambda** (注意：仅供 AWS 客户使用)
 
       [![启动堆栈](assets/launch-stack.png)](https://console.aws.amazon.com/cloudformation/home#/stacks/create/template?stackName=SwiftChatLambda&templateURL=https://aws-gcr-solutions.s3.amazonaws.com/swift-chat/latest/SwiftChatLambda.template)
 
@@ -121,7 +119,7 @@ macOS 等多个平台。
 
 ### 图片功能
 
-- [x] 支持使用中文生成图片
+- [x] 支持使用中文生成图片（确保在所选区域启用了`Claude 3 Haiku`）
 - [x] 支持点击查看和缩放生成的图片
 - [x] 长按图片可保存或分享
 - [x] 自动压缩上传图片以优化 token 使用
