@@ -19,6 +19,13 @@ macOS 等多个平台。
 - 快速启动和响应性能
 - 支持多种 AI 模型及切换
 
+**Amazon Nova 新功能 🎉🎉🎉**
+
+- 支持与 Amazon Nova Micro、Lite 和 Pro 进行流式对话
+- 支持 Nova Lite 和 Pro 对图片、文档及视频内容的理解
+- 支持直接在安卓和 iOS 设备上录制最长 30 秒的视频供 Nova 分析
+- 支持自动压缩上传超过8MB的高清视频（1080p/4K）
+
 ## 架构
 
 ![](/assets/architecture.png)
@@ -76,8 +83,8 @@ macOS 等多个平台。
 ### 第3步: 下载应用并设置 API URL 和 API Key
 
 1. 下载应用
-    - Android 应用点击 [下载](https://github.com/aws-samples/swift-chat/releases/download/1.5.0/SwiftChat.apk)
-    - macOS 应用点击 [下载](https://github.com/aws-samples/swift-chat/releases/download/1.5.0/SwiftChat.dmg)
+    - Android 应用点击 [下载](https://github.com/aws-samples/swift-chat/releases/download/1.6.0/SwiftChat.apk)
+    - macOS 应用点击 [下载](https://github.com/aws-samples/swift-chat/releases/download/1.6.0/SwiftChat.dmg)
     - iOS (目前不提供 iOS 版本，您可以使用 Xcode 在本地构建)
 
 2. 启动应用，点击左侧菜单按钮，并点击底部的 **Settings**。
