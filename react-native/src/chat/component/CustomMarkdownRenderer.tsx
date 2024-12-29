@@ -35,6 +35,9 @@ import Clipboard from '@react-native-clipboard/clipboard';
 import MarkedList from '@jsamr/react-native-li';
 import Decimal from '@jsamr/counter-style/lib/es/presets/decimal';
 import Disc from '@jsamr/counter-style/lib/es/presets/disc';
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-expect-error
+import MathView from 'react-native-math-view';
 
 const CustomCodeHighlighter = lazy(() => import('./CustomCodeHighlighter'));
 const cachedNode: { [key: string]: React.ReactNode } = {};
@@ -42,9 +45,15 @@ let currentNodeType = '';
 let currentCacheKey = '';
 let currentText = '';
 let currentNode: React.ReactNode;
+let mathViewIndex = 0;
 
 export function clearCachedNode() {
   Object.keys(cachedNode).forEach(key => delete cachedNode[key]);
+}
+
+function getMathKey() {
+  mathViewIndex++;
+  return 'math-' + mathViewIndex;
 }
 
 interface CopyButtonProps {
@@ -436,6 +445,49 @@ export class CustomMarkdownRenderer
       </MarkedList>
     );
   }
+
+  custom(
+    identifier: string,
+    _raw: string,
+    _children?: ReactNode[],
+    args?: Record<string, unknown>
+  ): ReactNode {
+    if (identifier === 'latex') {
+      const text = args?.text as string;
+      const isDisplayMode = args?.displayMode as boolean;
+      const mathView = (
+        <MathView
+          key={getMathKey()}
+          math={text}
+          style={
+            isDisplayMode
+              ? customStyles.displayMathView
+              : customStyles.inlineMathView
+          }
+        />
+      );
+
+      return (
+        <View
+          key={getMathKey()}
+          style={
+            isDisplayMode ? customStyles.displayMath : customStyles.inlineMath
+          }>
+          {isDisplayMode ? (
+            <ScrollView
+              key={getMathKey()}
+              horizontal={true}
+              showsHorizontalScrollIndicator={false}>
+              {mathView}
+            </ScrollView>
+          ) : (
+            mathView
+          )}
+        </View>
+      );
+    }
+    return null;
+  }
 }
 
 const getTableWidthArr = (
@@ -517,4 +569,17 @@ const customStyles = StyleSheet.create({
   cell: {
     minHeight: 32,
   },
+  displayMath: {
+    alignItems: 'center',
+    paddingVertical: 12,
+    width: '100%',
+  },
+  inlineMath: {
+    marginTop: 2,
+  },
+  displayMathView: {
+    marginVertical: 0,
+    alignSelf: 'center',
+  },
+  inlineMathView: {},
 });
