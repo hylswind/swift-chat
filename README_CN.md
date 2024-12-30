@@ -32,7 +32,7 @@ macOS 等多个平台。
 其中我们从新设计了 UI，例如字号行间距等，使其展示更加美观简洁。下图展示了 SwiftChat 支持丰富的 Markdown 内容渲染（段落、代码块、表格、LaTeX
 公式等）。
 
-![](assets/markdown.png)
+![](assets/markdown_zh.png)
 
 你所看到的这些内容都可以在所有支持的平台上以原生 UI 的形式很好地呈现。
 
