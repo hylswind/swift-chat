@@ -106,8 +106,8 @@ can find the **API URL** which looks like: `https://xxx.xxx.awsapprunner.com` or
 
 1. Download the App
 
-   - Android App click to [Download](https://github.com/aws-samples/swift-chat/releases/download/1.7.0/SwiftChat.apk)
-   - macOS App click to [Download](https://github.com/aws-samples/swift-chat/releases/download/1.7.0/SwiftChat.dmg)
+   - Android App click to [Download](https://github.com/aws-samples/swift-chat/releases/download/1.8.0/SwiftChat.apk)
+   - macOS App click to [Download](https://github.com/aws-samples/swift-chat/releases/download/1.8.0/SwiftChat.dmg)
    - iOS (Currently we do not provide the iOS version, you can build it locally with Xcode)
 
 2. Launch the App, open the drawer menu, and tap **Settings**.
