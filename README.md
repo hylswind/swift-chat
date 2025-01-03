@@ -31,12 +31,36 @@ macOS platforms.
   create images in similar styles.
 - Support LaTeX formula rendering (inline and display modes) for Amazon Nova.
 
-We redesigned the UI with optimized font sizes and line spacing for a more elegant and clean presentation. The image 
-below demonstrates SwiftChat rich markdown content support (Paragraph, Code Blocks, Tables, LaTeX and more)
+
+### Feature Showcase
+
+**Comprehensive Multimodal Analysis**: Text, Image, Document and Video
+
+<div style="display: flex; flex-direction: 'row'; background-color: #888888;">
+<img src="assets/avif/text_streaming.avif" width=24%>
+<img src="assets/avif/image_summary.avif" width=24%>
+<img src="assets/avif/doc_summary.avif" width=24%>
+<img src="assets/avif/video_summary.avif" width=24%>
+</div>
+
+**Creative Image Suite**: Generation, Style Replication, Background Removal & Replacement
+
+<div style="display: flex; flex-direction: 'row'; background-color: #888888;">
+<img src="assets/avif/gen_image.avif" width=24%>
+<img src="assets/avif/similar_style.avif" width=24%>
+<img src="assets/avif/remove_background.avif" width=24%>
+<img src="assets/avif/replace_background.avif" width=24%>
+</div>
+
+**Rich Markdown Support**: Paragraph, Code Blocks, Tables, LaTeX and More
 
 ![](assets/markdown.png)
 
-All of these features are seamlessly displayed across all supported platforms with native UI.
+We redesigned the UI with optimized font sizes and line spacing for a more elegant and clean presentation.
+All of these features are also seamlessly displayed on Android and macOS with native UI
+
+> Note: Some animated images have been sped up for demonstration. If you experience lag, please view on Chrome, Firefox, 
+> or Edge browser on your computer.
 
 ## Architecture
 
@@ -132,6 +156,14 @@ Congratulations 🎉 Your SwiftChat App is ready to use!
 
 ## Detailed Features
 
+**Quick Access Tools**: Code Copy, Selection Mode, Scroll Controls and Token Counter
+
+<div style="display: flex; flex-direction: 'row'; background-color: #888888;">
+<img src="assets/avif/copy_code.avif" width=32%>
+<img src="assets/avif/select_mode.avif" width=32%>
+<img src="assets/avif/scroll_token.avif" width=32%>
+</div>
+
 We feature streamlined chat History, Settings pages, and intuitive Usage statistics:
 
 ![](assets/history_settings.png)
@@ -171,6 +203,10 @@ We have optimized the layout for landscape mode. As shown below, you can comfort
 orientation.
 
 ![](assets/landscape.png)
+
+Similarly, for code that requires horizontal scrolling, rotate to landscape mode for better viewing.
+
+![](assets/avif/landscape.avif)
 
 ## What Makes SwiftChat Really "Swift"?
 
