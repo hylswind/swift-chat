@@ -8,7 +8,6 @@ import {
 } from 'react-native-image-picker';
 import { ChatMode, FileInfo, FileType } from '../../types/Chat.ts';
 import { pick, types } from 'react-native-document-picker';
-import Toast from 'react-native-toast-message';
 import { saveFile } from '../util/FileUtils.ts';
 import {
   createVideoThumbnail,
@@ -18,6 +17,7 @@ import {
 } from 'react-native-compressor';
 import { isMac } from '../../App.tsx';
 import { getTextModel } from '../../storage/StorageUtils.ts';
+import { showInfo } from '../util/ToastUtils.ts';
 
 interface CustomRenderActionsProps {
   onFileSelected: (files: FileInfo[]) => void;
@@ -217,13 +217,6 @@ export const CustomAddFileComponent: React.FC<CustomRenderActionsProps> = ({
       optionTintColor="black"
     />
   );
-};
-
-const showInfo = (msg: string) => {
-  Toast.show({
-    type: 'info',
-    text1: msg,
-  });
 };
 
 const MAX_FILE_SIZE = 4.5 * 1024 * 1024;

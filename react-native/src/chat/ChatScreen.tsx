@@ -19,10 +19,12 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import uuid from 'uuid';
 import { RouteParamList } from '../types/RouteTypes.ts';
 import {
+  getCurrentSystemPrompt,
   getImageModel,
   getMessagesBySessionId,
   getSessionId,
   getTextModel,
+  saveCurrentSystemPrompt,
   saveMessageList,
   saveMessages,
   updateTotalUsage,
@@ -32,6 +34,7 @@ import {
   ChatStatus,
   FileInfo,
   IMessageWithToken,
+  SystemPrompt,
   Usage,
 } from '../types/Chat.ts';
 import { useAppContext } from '../history/AppProvider.tsx';
@@ -53,8 +56,8 @@ import {
   isAllFileReady,
 } from './util/FileUtils.ts';
 import HeaderTitle from './component/HeaderTitle.tsx';
-import { HeaderOptions } from '@react-navigation/elements/src/types.tsx';
-import Toast from 'react-native-toast-message';
+import { showInfo } from './util/ToastUtils.ts';
+import { HeaderOptions } from '@react-navigation/elements';
 
 const BOT_ID = 2;
 
@@ -86,6 +89,10 @@ function ChatScreen(): React.JSX.Element {
   const modeRef = useRef(mode);
 
   const [messages, setMessages] = useState<IMessage[]>([]);
+  const [systemPrompt, setSystemPrompt] = useState<SystemPrompt | null>(
+    getCurrentSystemPrompt
+  );
+  const [showSystemPrompt, setShowSystemPrompt] = useState<boolean>(true);
   const [screenDimensions, setScreenDimensions] = useState(
     Dimensions.get('window')
   );
@@ -98,23 +105,33 @@ function ChatScreen(): React.JSX.Element {
   const textInputRef = useRef<TextInput>(null);
   const sessionIdRef = useRef(initialSessionId || getSessionId() + 1);
   const isCanceled = useRef(false);
-  const { sendEvent, event } = useAppContext();
+  const { sendEvent, event, drawerType } = useAppContext();
   const sendEventRef = useRef(sendEvent);
   const inputTexRef = useRef('');
   const controllerRef = useRef<AbortController | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<FileInfo[]>([]);
   const selectedFilesRef = useRef(selectedFiles);
   const usageRef = useRef(usage);
+  const systemPromptRef = useRef(systemPrompt);
+  const drawerTypeRef = useRef(drawerType);
 
   // update refs value with state
   useEffect(() => {
     messagesRef.current = messages;
     chatStatusRef.current = chatStatus;
     usageRef.current = usage;
+    setShowSystemPrompt(messages.length === 0);
   }, [chatStatus, messages, usage]);
 
   useEffect(() => {
+    drawerTypeRef.current = drawerType;
+  }, [drawerType]);
+
+  useEffect(() => {
     selectedFilesRef.current = selectedFiles;
+    if (selectedFiles.length > 0) {
+      setShowSystemPrompt(false);
+    }
   }, [selectedFiles]);
 
   // start new chat
@@ -122,6 +139,10 @@ function ChatScreen(): React.JSX.Element {
     useCallback(() => {
       trigger(HapticFeedbackTypes.impactMedium);
       sessionIdRef.current = getSessionId() + 1;
+      sendEventRef.current('updateHistorySelectedId', {
+        id: sessionIdRef.current,
+      });
+
       clearCachedNode();
       setMessages([]);
       bedrockMessages.current = [];
@@ -132,13 +153,22 @@ function ChatScreen(): React.JSX.Element {
   // header text and right button click
   React.useLayoutEffect(() => {
     currentMode = mode;
+    systemPromptRef.current = systemPrompt;
     const headerOptions: HeaderOptions = {
       // eslint-disable-next-line react/no-unstable-nested-components
       headerTitle: () => (
         <HeaderTitle
-          title={mode === ChatMode.Text ? 'Chat' : 'Image'}
+          title={
+            mode === ChatMode.Text
+              ? systemPrompt
+                ? systemPrompt.name
+                : 'Chat'
+              : 'Image'
+          }
           usage={usage}
           onDoubleTap={scrollToTop}
+          onShowSystemPrompt={() => setShowSystemPrompt(true)}
+          isShowSystemPrompt={showSystemPrompt}
         />
       ),
       // eslint-disable-next-line react/no-unstable-nested-components
@@ -161,7 +191,7 @@ function ChatScreen(): React.JSX.Element {
       ),
     };
     navigation.setOptions(headerOptions);
-  }, [usage, navigation, mode]);
+  }, [usage, navigation, mode, systemPrompt, showSystemPrompt]);
 
   // sessionId changes (start new chat or click another session)
   useEffect(() => {
@@ -188,9 +218,12 @@ function ChatScreen(): React.JSX.Element {
         startNewChat.current();
         return;
       }
+      // click from history
       const msg = getMessagesBySessionId(initialSessionId);
       sessionIdRef.current = initialSessionId;
       setUsage((msg[0] as IMessageWithToken).usage);
+      setSystemPrompt(null);
+      saveCurrentSystemPrompt(null);
       getBedrockMessagesFromChatMessages(msg).then(currentMessage => {
         bedrockMessages.current = currentMessage;
       });
@@ -207,6 +240,9 @@ function ChatScreen(): React.JSX.Element {
       const { id } = event.params;
       if (sessionIdRef.current === id) {
         sessionIdRef.current = getSessionId() + 1;
+        sendEventRef.current('updateHistorySelectedId', {
+          id: sessionIdRef.current,
+        });
         setUsage(undefined);
         bedrockMessages.current = [];
         clearCachedNode();
@@ -237,7 +273,7 @@ function ChatScreen(): React.JSX.Element {
       if (textInputRef.current) {
         textInputRef.current.focus();
       }
-    }, 300);
+    }, 100);
   };
 
   // update screenWith and height when screen rotate
@@ -266,7 +302,9 @@ function ChatScreen(): React.JSX.Element {
       getBedrockMessage(messagesRef.current[0]).then(currentMsg => {
         bedrockMessages.current.push(currentMsg);
       });
-
+      if (drawerTypeRef.current === 'permanent') {
+        sendEventRef.current('updateHistory');
+      }
       setChatStatus(ChatStatus.Init);
     }
   }, [chatStatus]);
@@ -307,6 +345,9 @@ function ChatScreen(): React.JSX.Element {
 
   const { width: screenWidth, height: screenHeight } = screenDimensions;
 
+  const chatScreenWidth =
+    isMac && drawerType === 'permanent' ? screenWidth - 300 : screenWidth;
+
   const scrollStyle = StyleSheet.create({
     scrollToBottomContainerStyle: {
       width: 30,
@@ -316,7 +357,7 @@ function ChatScreen(): React.JSX.Element {
         screenHeight < screenWidth &&
         screenHeight < 500
           ? screenWidth / 2 - 75 // iphone landscape
-          : screenWidth / 2 - 15,
+          : chatScreenWidth / 2 - 15,
       bottom: screenHeight > screenWidth ? '1.5%' : '2%',
     },
   });
@@ -352,6 +393,7 @@ function ChatScreen(): React.JSX.Element {
       invokeBedrockWithCallBack(
         bedrockMessages.current,
         modeRef.current,
+        systemPromptRef.current,
         () => isCanceled.current,
         controllerRef.current,
         (
@@ -418,10 +460,7 @@ function ChatScreen(): React.JSX.Element {
   const onSend = useCallback((message: IMessage[] = []) => {
     const files = selectedFilesRef.current;
     if (!isAllFileReady(files)) {
-      Toast.show({
-        type: 'info',
-        text1: 'please wait for all videos to be ready',
-      });
+      showInfo('please wait for all videos to be ready');
       return;
     }
     if (message[0]?.text || files.length > 0) {
@@ -493,21 +532,24 @@ function ChatScreen(): React.JSX.Element {
             }}
           />
         )}
-        renderChatFooter={() =>
-          selectedFiles.length > 0 && (
-            <CustomChatFooter
-              files={selectedFiles}
-              onFileUpdated={(files, isUpdate) => {
-                if (isUpdate) {
-                  setSelectedFiles(files);
-                } else {
-                  handleNewFileSelected(files);
-                }
-              }}
-              chatMode={modeRef.current}
-            />
-          )
-        }
+        renderChatFooter={() => (
+          <CustomChatFooter
+            files={selectedFiles}
+            onFileUpdated={(files, isUpdate) => {
+              if (isUpdate) {
+                setSelectedFiles(files);
+              } else {
+                handleNewFileSelected(files);
+              }
+            }}
+            onSystemPromptUpdated={prompt => {
+              setSystemPrompt(prompt);
+              saveCurrentSystemPrompt(prompt);
+            }}
+            chatMode={modeRef.current}
+            isShowSystemPrompt={showSystemPrompt}
+          />
+        )}
         renderMessage={props => (
           <CustomMessageComponent {...props} chatStatus={chatStatus} />
         )}
@@ -525,7 +567,7 @@ function ChatScreen(): React.JSX.Element {
             color: 'black',
           },
         }}
-        maxComposerHeight={isMac ? 320 : 200}
+        maxComposerHeight={isMac ? 360 : 200}
         onInputTextChanged={text => {
           if (
             isMac &&

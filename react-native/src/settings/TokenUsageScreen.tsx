@@ -1,20 +1,17 @@
 import * as React from 'react';
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import {
   Animated,
-  Image,
   Linking,
   SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { getModelUsage } from '../storage/StorageUtils';
 import { Usage } from '../types/Chat.ts';
 import { useNavigation } from '@react-navigation/native';
-import { HeaderOptions } from '@react-navigation/elements/src/types.tsx';
 import { RouteParamList } from '../types/RouteTypes.ts';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import {
@@ -27,28 +24,24 @@ import {
   getTotalOutputTokens,
   getUsagePrice,
 } from './ModelPrice.ts';
+import { HeaderLeftView } from '../prompt/HeaderLeftView.tsx';
 
 type NavigationProp = DrawerNavigationProp<RouteParamList>;
 
 function TokenUsageScreen(): React.JSX.Element {
   const navigation = useNavigation<NavigationProp>();
   const [modelUsage, setModelUsage] = React.useState<Usage[]>([]);
+
+  const headerLeft = useCallback(
+    () => HeaderLeftView(navigation),
+    [navigation]
+  );
   React.useLayoutEffect(() => {
-    const headerOption: HeaderOptions = {
-      // eslint-disable-next-line react/no-unstable-nested-components
-      headerLeft: () => (
-        <TouchableOpacity
-          onPress={() => navigation.navigate('Settings', {})}
-          style={styles.headerContainer}>
-          <Image
-            source={require('../assets/back.png')}
-            style={styles.headerImage}
-          />
-        </TouchableOpacity>
-      ),
+    const headerOption = {
+      headerLeft,
     };
     navigation.setOptions(headerOption);
-  }, [navigation]);
+  }, [navigation, headerLeft]);
 
   const slideAnim = useRef(new Animated.Value(0)).current;
 
@@ -65,162 +58,137 @@ function TokenUsageScreen(): React.JSX.Element {
   }, [navigation, slideAnim]);
 
   return (
-    <Animated.View
-      style={[
-        styles.animatedContainer,
-        {
-          transform: [
-            {
-              translateX: slideAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [300, 0],
-              }),
-            },
-          ],
-        },
-      ]}>
-      <SafeAreaView style={styles.safeArea}>
-        <ScrollView contentContainerStyle={styles.container}>
-          {modelUsage
-            .sort(
-              (a, b) =>
-                getUsagePrice(b).totalPrice - getUsagePrice(a).totalPrice
-            )
-            .map((usage, index) => {
-              const usagePrice = getUsagePrice(usage);
-              const isImageModel =
-                usage.imageCount ||
-                usage.smallImageCount ||
-                usage.largeImageCount;
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView contentContainerStyle={styles.container}>
+        {modelUsage
+          .sort(
+            (a, b) => getUsagePrice(b).totalPrice - getUsagePrice(a).totalPrice
+          )
+          .map((usage, index) => {
+            const usagePrice = getUsagePrice(usage);
+            const isImageModel =
+              usage.imageCount ||
+              usage.smallImageCount ||
+              usage.largeImageCount;
 
-              return (
-                <View key={index} style={styles.usageItem}>
-                  <View style={styles.modelHeader}>
-                    <Text style={styles.modelName}>{usage.modelName}</Text>
-                    <Text style={styles.totalPrice}>
-                      USD{' '}
-                      {usagePrice.totalPrice === 0
-                        ? '0.00'
-                        : usagePrice.totalPrice}
-                    </Text>
-                  </View>
-
-                  {isImageModel ? (
-                    <>
-                      {usage.smallImageCount ? (
-                        <View style={styles.tokenInfo}>
-                          <Text style={styles.tokenText}>
-                            512-Standard:{' '}
-                            {usage.smallImageCount.toLocaleString()}
-                          </Text>
-                          <Text style={styles.tokenText}>
-                            USD {usagePrice.smallImagePrice}
-                          </Text>
-                        </View>
-                      ) : null}
-                      {usage.imageCount ? (
-                        <View style={styles.tokenInfo}>
-                          <Text style={styles.tokenText}>
-                            1024-Standard: {usage.imageCount.toLocaleString()}
-                          </Text>
-                          <Text style={styles.tokenText}>
-                            USD {usagePrice.mediumImagePrice}
-                          </Text>
-                        </View>
-                      ) : null}
-                      {usage.largeImageCount ? (
-                        <View style={styles.tokenInfo}>
-                          <Text style={styles.tokenText}>
-                            2048-Standard:{' '}
-                            {usage.largeImageCount.toLocaleString()}
-                          </Text>
-                          <Text style={styles.tokenText}>
-                            USD {usagePrice.largeImagePrice}
-                          </Text>
-                        </View>
-                      ) : null}
-                    </>
-                  ) : (
-                    <>
-                      <View style={styles.tokenInfo}>
-                        <Text style={styles.tokenText}>
-                          Input: {usage.inputTokens.toLocaleString()}
-                        </Text>
-                        <Text style={styles.tokenText}>
-                          USD {usagePrice.inputPrice}
-                        </Text>
-                      </View>
-                      <View style={styles.tokenInfo}>
-                        <Text style={styles.tokenText}>
-                          Output: {usage.outputTokens.toLocaleString()}
-                        </Text>
-                        <Text style={styles.tokenText}>
-                          USD {usagePrice.outputPrice}
-                        </Text>
-                      </View>
-                    </>
-                  )}
+            return (
+              <View key={index} style={styles.usageItem}>
+                <View style={styles.modelHeader}>
+                  <Text style={styles.modelName}>{usage.modelName}</Text>
+                  <Text style={styles.totalPrice}>
+                    USD{' '}
+                    {usagePrice.totalPrice === 0
+                      ? '0.00'
+                      : usagePrice.totalPrice}
+                  </Text>
                 </View>
-              );
-            })}
-          <View style={styles.totalContainer}>
-            <View style={styles.totalHeader}>
-              <Text style={styles.totalLabel}>Total Usage</Text>
-              <Text style={styles.totalPrice}>
-                USD {getTotalCost(modelUsage).toString()}
-              </Text>
-            </View>
-            <View style={styles.totalRow}>
-              <Text style={styles.totalText}>
-                Input Tokens: {getTotalInputTokens(modelUsage).toLocaleString()}
-              </Text>
-              <Text style={styles.totalText}>
-                USD {getTotalInputPrice(modelUsage).toString()}
-              </Text>
-            </View>
-            <View style={styles.totalRow}>
-              <Text style={styles.totalText}>
-                Output Tokens:{' '}
-                {getTotalOutputTokens(modelUsage).toLocaleString()}
-              </Text>
-              <Text style={styles.totalText}>
-                USD {getTotalOutputPrice(modelUsage).toString()}
-              </Text>
-            </View>
-            <View style={styles.totalRow}>
-              <Text style={styles.totalText}>
-                Images: {getTotalImageCount(modelUsage).toLocaleString()}
-              </Text>
-              <Text style={styles.totalText}>
-                USD {getTotalImagePrice(modelUsage).toString()}
-              </Text>
-            </View>
-          </View>
-          <Text
-            style={styles.priceLink}
-            onPress={() =>
-              Linking.openURL('https://aws.amazon.com/bedrock/pricing/')
-            }>
-            * Estimated costs based on US region pricing. Actual charges may
-            vary by region. For accurate pricing, please refer to{' '}
-            <Text style={[styles.priceLink, styles.underline]}>
-              Amazon Bedrock Pricing
+
+                {isImageModel ? (
+                  <>
+                    {usage.smallImageCount ? (
+                      <View style={styles.tokenInfo}>
+                        <Text style={styles.tokenText}>
+                          512-Standard: {usage.smallImageCount.toLocaleString()}
+                        </Text>
+                        <Text style={styles.tokenText}>
+                          USD {usagePrice.smallImagePrice}
+                        </Text>
+                      </View>
+                    ) : null}
+                    {usage.imageCount ? (
+                      <View style={styles.tokenInfo}>
+                        <Text style={styles.tokenText}>
+                          1024-Standard: {usage.imageCount.toLocaleString()}
+                        </Text>
+                        <Text style={styles.tokenText}>
+                          USD {usagePrice.mediumImagePrice}
+                        </Text>
+                      </View>
+                    ) : null}
+                    {usage.largeImageCount ? (
+                      <View style={styles.tokenInfo}>
+                        <Text style={styles.tokenText}>
+                          2048-Standard:{' '}
+                          {usage.largeImageCount.toLocaleString()}
+                        </Text>
+                        <Text style={styles.tokenText}>
+                          USD {usagePrice.largeImagePrice}
+                        </Text>
+                      </View>
+                    ) : null}
+                  </>
+                ) : (
+                  <>
+                    <View style={styles.tokenInfo}>
+                      <Text style={styles.tokenText}>
+                        Input: {usage.inputTokens.toLocaleString()}
+                      </Text>
+                      <Text style={styles.tokenText}>
+                        USD {usagePrice.inputPrice}
+                      </Text>
+                    </View>
+                    <View style={styles.tokenInfo}>
+                      <Text style={styles.tokenText}>
+                        Output: {usage.outputTokens.toLocaleString()}
+                      </Text>
+                      <Text style={styles.tokenText}>
+                        USD {usagePrice.outputPrice}
+                      </Text>
+                    </View>
+                  </>
+                )}
+              </View>
+            );
+          })}
+        <View style={styles.totalContainer}>
+          <View style={styles.totalHeader}>
+            <Text style={styles.totalLabel}>Total Usage</Text>
+            <Text style={styles.totalPrice}>
+              USD {getTotalCost(modelUsage).toString()}
             </Text>
+          </View>
+          <View style={styles.totalRow}>
+            <Text style={styles.totalText}>
+              Input Tokens: {getTotalInputTokens(modelUsage).toLocaleString()}
+            </Text>
+            <Text style={styles.totalText}>
+              USD {getTotalInputPrice(modelUsage).toString()}
+            </Text>
+          </View>
+          <View style={styles.totalRow}>
+            <Text style={styles.totalText}>
+              Output Tokens: {getTotalOutputTokens(modelUsage).toLocaleString()}
+            </Text>
+            <Text style={styles.totalText}>
+              USD {getTotalOutputPrice(modelUsage).toString()}
+            </Text>
+          </View>
+          <View style={styles.totalRow}>
+            <Text style={styles.totalText}>
+              Images: {getTotalImageCount(modelUsage).toLocaleString()}
+            </Text>
+            <Text style={styles.totalText}>
+              USD {getTotalImagePrice(modelUsage).toString()}
+            </Text>
+          </View>
+        </View>
+        <Text
+          style={styles.priceLink}
+          onPress={() =>
+            Linking.openURL('https://aws.amazon.com/bedrock/pricing/')
+          }>
+          * Estimated costs based on US region pricing. Actual charges may vary
+          by region. For accurate pricing, please refer to{' '}
+          <Text style={[styles.priceLink, styles.underline]}>
+            Amazon Bedrock Pricing
           </Text>
-        </ScrollView>
-      </SafeAreaView>
-    </Animated.View>
+        </Text>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  headerContainer: {
-    padding: 16,
-  },
-  headerImage: { width: 20, height: 20 },
-  animatedContainer: {
-    flex: 1,
-  },
   safeArea: {
     flex: 1,
     backgroundColor: 'white',

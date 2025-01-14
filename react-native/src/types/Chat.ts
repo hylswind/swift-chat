@@ -14,7 +14,8 @@ export enum ChatStatus {
 }
 
 export interface EventData {
-  id: number;
+  id?: number;
+  prompt?: SystemPrompt;
 }
 
 export type Model = {
@@ -94,4 +95,11 @@ export type UsagePrice = {
 
 export interface IMessageWithToken extends IMessage {
   usage?: Usage;
+}
+
+export interface SystemPrompt {
+  id: number;
+  name: string;
+  prompt: string;
+  includeHistory: boolean;
 }

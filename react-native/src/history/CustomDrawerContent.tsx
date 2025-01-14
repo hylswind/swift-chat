@@ -25,6 +25,8 @@ import { useAppContext } from './AppProvider.tsx';
 import { trigger } from '../chat/util/HapticUtils.ts';
 import { HapticFeedbackTypes } from 'react-native-haptic-feedback/src';
 import { groupMessagesByDate } from './HistoryGroupUtil.ts';
+import { isMac } from '../App.tsx';
+import { DrawerActions } from '@react-navigation/native';
 
 const CustomDrawerContent: React.FC<DrawerContentComponentProps> = ({
   navigation,
@@ -35,14 +37,51 @@ const CustomDrawerContent: React.FC<DrawerContentComponentProps> = ({
   const [showDialog, setShowDialog] = useState<boolean>(false);
   const deleteIdRef = useRef<number>(0);
   const drawerStatus = useDrawerStatus();
+  const [selectedId, setSelectedId] = useState<number | null>(null);
   const tapIndexRef = useRef<number>(1);
-  const { sendEvent } = useAppContext();
+  const isFirstRenderRef = useRef<boolean>(true);
+  const isSlideDrawerEnabledRef = useRef<boolean>(false);
+  const { event, sendEvent } = useAppContext();
+  const { drawerType, setDrawerType } = useAppContext();
+
+  const drawerTypeRef = useRef(drawerType);
+  const setDrawerTypeRef = useRef(setDrawerType);
+  useEffect(() => {
+    drawerTypeRef.current = drawerType;
+  }, [drawerType]);
 
   useEffect(() => {
     groupChatHistoryRef.current = groupChatHistory;
   }, [groupChatHistory]);
 
   useEffect(() => {
+    if (event?.event === 'updateHistory') {
+      handleUpdateHistory();
+    } else if (event?.event === 'updateHistorySelectedId') {
+      setSelectedId(event.params?.id ?? null);
+    }
+  }, [event]);
+
+  useEffect(() => {
+    if (isMac && isFirstRenderRef.current) {
+      handleUpdateHistory();
+      isFirstRenderRef.current = false;
+      return;
+    }
+    if (isMac) {
+      if (isSlideDrawerEnabledRef.current) {
+        isSlideDrawerEnabledRef.current = false;
+        return;
+      }
+      if (drawerTypeRef.current === 'permanent') {
+        setTimeout(() => {
+          setDrawerTypeRef.current('slide');
+          navigation.dispatch(DrawerActions.toggleDrawer());
+        }, 10);
+      }
+      isSlideDrawerEnabledRef.current = true;
+    }
+
     if (drawerStatus === 'open') {
       trigger(HapticFeedbackTypes.soft);
       trigger(HapticFeedbackTypes.selection);
@@ -52,15 +91,25 @@ const CustomDrawerContent: React.FC<DrawerContentComponentProps> = ({
       ) {
         return;
       }
-      const messageList = getMessageList();
-      chatHistoryRef.current = messageList;
-      const flatListData = groupMessagesByDate(messageList);
-      setGroupChatHistory(flatListData);
+      handleUpdateHistory();
     } else {
       trigger(HapticFeedbackTypes.selection);
       trigger(HapticFeedbackTypes.soft);
     }
-  }, [drawerStatus]);
+  }, [drawerStatus, navigation]);
+
+  const handleUpdateHistory = () => {
+    const messageList = getMessageList();
+    chatHistoryRef.current = messageList;
+    const flatListData = groupMessagesByDate(messageList);
+    setGroupChatHistory(flatListData);
+  };
+
+  const setDrawerToPermanent = () => {
+    if (isMac && drawerType === 'slide') {
+      setDrawerType('permanent');
+    }
+  };
 
   const handleDelete = () => {
     // update ui
@@ -91,6 +140,7 @@ const CustomDrawerContent: React.FC<DrawerContentComponentProps> = ({
             <TouchableOpacity
               style={styles.settingsTouch}
               onPress={() => {
+                setDrawerToPermanent();
                 navigation.navigate('Bedrock', {
                   sessionId: -1,
                   tapIndex: -1,
@@ -106,6 +156,7 @@ const CustomDrawerContent: React.FC<DrawerContentComponentProps> = ({
             <TouchableOpacity
               style={styles.settingsTouch}
               onPress={() => {
+                setDrawerToPermanent();
                 navigation.navigate('Bedrock', {
                   sessionId: -1,
                   tapIndex: -2,
@@ -129,23 +180,29 @@ const CustomDrawerContent: React.FC<DrawerContentComponentProps> = ({
               </View>
             );
           } else {
+            const isSelected = selectedId === item.id;
             return (
               <TouchableOpacity
+                activeOpacity={1}
                 onPress={() => {
-                  navigation.navigate('Bedrock', {
-                    sessionId: item.id,
-                    tapIndex: tapIndexRef.current,
-                    mode: item.mode,
-                  });
-                  tapIndexRef.current += 1;
+                  setSelectedId(item.id);
+                  setDrawerToPermanent();
+                  setTimeout(() => {
+                    navigation.navigate('Bedrock', {
+                      sessionId: item.id,
+                      tapIndex: tapIndexRef.current,
+                      mode: item.mode,
+                    });
+                    tapIndexRef.current += 1;
+                  }, 0);
                 }}
-                onLongPress={event => {
+                onLongPress={gestureEvent => {
                   trigger(HapticFeedbackTypes.notificationWarning);
-                  event.preventDefault();
+                  gestureEvent.preventDefault();
                   setShowDialog(true);
                   deleteIdRef.current = item.id;
                 }}
-                style={styles.touch}>
+                style={[styles.touch, isSelected && styles.touchSelected]}>
                 <Text numberOfLines={1} style={styles.title}>
                   {item.title}
                 </Text>
@@ -157,6 +214,7 @@ const CustomDrawerContent: React.FC<DrawerContentComponentProps> = ({
       <TouchableOpacity
         style={styles.settingsTouch}
         onPress={() => {
+          setDrawerToPermanent();
           navigation.navigate('Settings');
         }}>
         <Image
@@ -222,9 +280,13 @@ const styles = StyleSheet.create({
   },
   touch: {
     paddingHorizontal: 8,
-    paddingVertical: 10,
+    paddingVertical: 12,
     marginHorizontal: 12,
-    marginVertical: 4,
+    marginVertical: 2,
+    borderRadius: 8,
+  },
+  touchSelected: {
+    backgroundColor: '#F5F5F5',
   },
   sectionContainer: {
     paddingHorizontal: 8,

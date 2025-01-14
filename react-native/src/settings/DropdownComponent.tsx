@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { StyleSheet, View, Text, Image } from 'react-native';
 import { Dropdown } from 'react-native-element-dropdown';
+import { isMac } from '../App.tsx';
 
 interface DropdownItem {
   label: string;
@@ -35,10 +36,17 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({
       </View>
     );
   };
+  const [isFocus, setIsFocus] = useState(false);
+  const renderLabel = (labelText: string) => {
+    if (value || isFocus) {
+      return <Text style={[styles.label]}>{labelText}</Text>;
+    }
+    return null;
+  };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>{label}</Text>
+      {renderLabel(label)}
       <Dropdown
         style={styles.dropdown}
         placeholderStyle={styles.placeholderStyle}
@@ -46,10 +54,11 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({
         inputSearchStyle={styles.inputSearchStyle}
         data={data}
         search
-        maxHeight={300}
+        maxHeight={isMac ? 600 : 420}
         labelField="label"
         valueField="value"
         placeholder={placeholder}
+        onFocus={() => setIsFocus(true)}
         searchPlaceholder={searchPlaceholder}
         value={value}
         onChange={onChange}
@@ -63,16 +72,22 @@ export default CustomDropdown;
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 16,
+    marginBottom: 12,
+    marginTop: 8,
   },
   label: {
-    fontSize: 16,
-    fontWeight: '500',
+    position: 'absolute',
+    backgroundColor: 'white',
     color: 'black',
-    marginBottom: 8,
+    left: 8,
+    top: -8,
+    zIndex: 999,
+    paddingHorizontal: 4,
+    fontSize: 12,
+    fontWeight: '600',
   },
   dropdown: {
-    height: 40,
+    height: 44,
     backgroundColor: 'white',
     borderRadius: 6,
     borderColor: 'gray',

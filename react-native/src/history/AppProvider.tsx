@@ -1,9 +1,13 @@
-import React, { createContext, useState, useContext, ReactNode } from 'react';
+import React, { createContext, ReactNode, useContext, useState } from 'react';
 import { EventData } from '../types/Chat.ts';
+
+export type DrawerType = 'permanent' | 'slide';
 
 interface AppContextType {
   sendEvent: (event: string, params?: EventData) => void;
   event: { event: string; params?: EventData } | null;
+  drawerType: DrawerType;
+  setDrawerType: (type: DrawerType) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -21,9 +25,16 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const sendEvent = (eventName: string, params?: EventData) => {
     setEvent({ event: eventName, params: params });
   };
+  const [drawerType, setDrawerType] = useState<DrawerType>('permanent');
 
   return (
-    <AppContext.Provider value={{ sendEvent, event }}>
+    <AppContext.Provider
+      value={{
+        sendEvent,
+        event,
+        drawerType,
+        setDrawerType,
+      }}>
       {children}
     </AppContext.Provider>
   );

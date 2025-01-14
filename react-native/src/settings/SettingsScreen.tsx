@@ -19,7 +19,6 @@ import { HapticFeedbackTypes } from 'react-native-haptic-feedback/src';
 import {
   getAllImageSize,
   getAllModels,
-  getAllRegions,
   getApiKey,
   getApiUrl,
   getHapticEnabled,
@@ -44,8 +43,9 @@ import { DropdownItem, Model, UpgradeInfo } from '../types/Chat.ts';
 import packageJson from '../../package.json';
 import { isMac } from '../App.tsx';
 import CustomDropdown from './DropdownComponent.tsx';
-import Toast from 'react-native-toast-message';
 import { getTotalCost } from './ModelPrice.ts';
+import { getAllRegions } from '../storage/Constants.ts';
+import { showInfo } from '../chat/util/ToastUtils.ts';
 
 const initUpgradeInfo: UpgradeInfo = {
   needUpgrade: false,
@@ -111,9 +111,36 @@ function SettingsScreen(): React.JSX.Element {
     const response = await requestAllModels();
     if (response.imageModel.length > 0) {
       setImageModels(response.imageModel);
+      const imageModel = getImageModel();
+      const targetModels = response.imageModel.filter(
+        model => model.modelName === imageModel.modelName
+      );
+      if (targetModels && targetModels.length === 1) {
+        setSelectedImageModel(targetModels[0].modelId);
+        saveImageModel(targetModels[0]);
+      } else {
+        setSelectedImageModel(response.imageModel[0].modelId);
+        saveImageModel(response.imageModel[0]);
+      }
     }
     if (response.textModel.length > 0) {
       setTextModels(response.textModel);
+      const textModel = getTextModel();
+      const targetModels = response.textModel.filter(
+        model => model.modelName === textModel.modelName
+      );
+      if (targetModels && targetModels.length === 1) {
+        setSelectedTextModel(targetModels[0].modelId);
+        saveTextModel(targetModels[0]);
+      } else {
+        const defaultMissMatchModel = response.textModel.filter(
+          model => model.modelName === 'Claude 3 Sonnet'
+        );
+        if (defaultMissMatchModel && defaultMissMatchModel.length === 1) {
+          setSelectedTextModel(defaultMissMatchModel[0].modelId);
+          saveTextModel(defaultMissMatchModel[0]);
+        }
+      }
     }
     if (response.imageModel.length > 0 || response.textModel.length > 0) {
       saveAllModels(response);
@@ -143,10 +170,7 @@ function SettingsScreen(): React.JSX.Element {
                 tapIndex: -1,
               });
             } else {
-              Toast.show({
-                type: 'info',
-                text1: 'Please input your API URL and API Key',
-              });
+              showInfo('Please input your API URL and API Key');
             }
           }}
           imageSource={require('../assets/done.png')}
@@ -193,7 +217,7 @@ function SettingsScreen(): React.JSX.Element {
           secureTextEntry={true}
         />
         <CustomDropdown
-          label="Select Region"
+          label="Region"
           data={regionsData}
           value={region}
           onChange={(item: DropdownItem) => {
@@ -206,7 +230,7 @@ function SettingsScreen(): React.JSX.Element {
           placeholder="Select a region"
         />
         <CustomDropdown
-          label="Select Text Model"
+          label="Text Model"
           data={textModelsData}
           value={selectedTextModel}
           onChange={(item: DropdownItem) => {
@@ -223,7 +247,7 @@ function SettingsScreen(): React.JSX.Element {
           placeholder="Select a model"
         />
         <CustomDropdown
-          label="Select Image Model"
+          label="Image Model"
           data={imageModelsData}
           value={selectedImageModel}
           onChange={(item: DropdownItem) => {
@@ -244,7 +268,7 @@ function SettingsScreen(): React.JSX.Element {
           placeholder="Select a model"
         />
         <CustomDropdown
-          label="Select Image Size"
+          label="Image Size"
           data={imageSizesData}
           value={imageSize}
           onChange={(item: DropdownItem) => {
@@ -364,12 +388,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingHorizontal: 10,
     color: 'black',
-  },
-  regionAutoSwitchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginVertical: 10,
   },
   switchContainer: {
     flexDirection: 'row',
