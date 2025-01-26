@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Image,
   Linking,
@@ -9,7 +9,6 @@ import {
   StyleSheet,
   Switch,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -21,17 +20,25 @@ import {
   getAllModels,
   getApiKey,
   getApiUrl,
+  getDeepSeekApiKey,
   getHapticEnabled,
   getImageModel,
   getImageSize,
   getModelUsage,
+  getOllamaApiUrl,
+  getOpenAIApiKey,
+  getOpenAIProxyEnabled,
   getRegion,
   getTextModel,
   isNewStabilityImageModel,
   saveAllModels,
+  saveDeepSeekApiKey,
   saveImageModel,
   saveImageSize,
   saveKeys,
+  saveOllamaApiURL,
+  saveOpenAIApiKey,
+  saveOpenAIProxyEnabled,
   saveRegion,
   saveTextModel,
 } from '../storage/StorageUtils.ts';
@@ -44,8 +51,16 @@ import packageJson from '../../package.json';
 import { isMac } from '../App.tsx';
 import CustomDropdown from './DropdownComponent.tsx';
 import { getTotalCost } from './ModelPrice.ts';
-import { getAllRegions } from '../storage/Constants.ts';
+import {
+  DeepSeekModels,
+  getAllRegions,
+  getDefaultTextModels,
+  GPTModels,
+} from '../storage/Constants.ts';
 import { showInfo } from '../chat/util/ToastUtils.ts';
+import CustomTextInput from './CustomTextInput.tsx';
+import { requestAllOllamaModels } from '../api/ollama-api.ts';
+import TabButton from './TabButton';
 
 const initUpgradeInfo: UpgradeInfo = {
   needUpgrade: false,
@@ -53,11 +68,17 @@ const initUpgradeInfo: UpgradeInfo = {
   url: '',
 };
 
-const GITHUB_LINK = 'https://github.com/aws-samples/swift-chat';
+export const GITHUB_LINK = 'https://github.com/aws-samples/swift-chat';
 
 function SettingsScreen(): React.JSX.Element {
   const [apiUrl, setApiUrl] = useState(getApiUrl);
   const [apiKey, setApiKey] = useState(getApiKey);
+  const [ollamaApiUrl, setOllamaApiUrl] = useState(getOllamaApiUrl);
+  const [deepSeekApiKey, setDeepSeekApiKey] = useState(getDeepSeekApiKey);
+  const [openAIApiKey, setOpenAIApiKey] = useState(getOpenAIApiKey);
+  const [openAIProxyEnabled, setOpenAIProxyEnabled] = useState(
+    getOpenAIProxyEnabled
+  );
   const [region, setRegion] = useState(getRegion);
   const [imageSize, setImageSize] = useState(getImageSize);
   const [hapticEnabled, setHapticEnabled] = useState(getHapticEnabled);
@@ -68,6 +89,8 @@ function SettingsScreen(): React.JSX.Element {
   const [selectedImageModel, setSelectedImageModel] = useState<string>('');
   const [upgradeInfo, setUpgradeInfo] = useState<UpgradeInfo>(initUpgradeInfo);
   const [cost, setCost] = useState('0.00');
+  const controllerRef = useRef<AbortController | null>(null);
+  const [selectedTab, setSelectedTab] = useState('bedrock');
 
   useEffect(() => {
     return navigation.addListener('focus', () => {
@@ -107,7 +130,24 @@ function SettingsScreen(): React.JSX.Element {
     }
   }, [apiUrl, apiKey]);
 
+  useEffect(() => {
+    saveOllamaApiURL(ollamaApiUrl);
+    if (ollamaApiUrl.length > 0) {
+      fetchAndSetModelNames().then();
+    }
+  }, [ollamaApiUrl]);
+
+  useEffect(() => {
+    saveDeepSeekApiKey(deepSeekApiKey);
+  }, [deepSeekApiKey]);
+
+  useEffect(() => {
+    saveOpenAIApiKey(openAIApiKey);
+  }, [openAIApiKey]);
+
   const fetchAndSetModelNames = async () => {
+    controllerRef.current = new AbortController();
+    const ollamaModels = await requestAllOllamaModels();
     const response = await requestAllModels();
     if (response.imageModel.length > 0) {
       setImageModels(response.imageModel);
@@ -123,23 +163,31 @@ function SettingsScreen(): React.JSX.Element {
         saveImageModel(response.imageModel[0]);
       }
     }
-    if (response.textModel.length > 0) {
-      setTextModels(response.textModel);
-      const textModel = getTextModel();
-      const targetModels = response.textModel.filter(
-        model => model.modelName === textModel.modelName
+    if (response.textModel.length === 0) {
+      response.textModel = [...getDefaultTextModels(), ...ollamaModels];
+    } else {
+      response.textModel = [
+        ...response.textModel,
+        ...ollamaModels,
+        ...DeepSeekModels,
+        ...GPTModels,
+      ];
+    }
+    setTextModels(response.textModel);
+    const textModel = getTextModel();
+    const targetModels = response.textModel.filter(
+      model => model.modelName === textModel.modelName
+    );
+    if (targetModels && targetModels.length === 1) {
+      setSelectedTextModel(targetModels[0].modelId);
+      saveTextModel(targetModels[0]);
+    } else {
+      const defaultMissMatchModel = response.textModel.filter(
+        model => model.modelName === 'Claude 3 Sonnet'
       );
-      if (targetModels && targetModels.length === 1) {
-        setSelectedTextModel(targetModels[0].modelId);
-        saveTextModel(targetModels[0]);
-      } else {
-        const defaultMissMatchModel = response.textModel.filter(
-          model => model.modelName === 'Claude 3 Sonnet'
-        );
-        if (defaultMissMatchModel && defaultMissMatchModel.length === 1) {
-          setSelectedTextModel(defaultMissMatchModel[0].modelId);
-          saveTextModel(defaultMissMatchModel[0]);
-        }
+      if (defaultMissMatchModel && defaultMissMatchModel.length === 1) {
+        setSelectedTextModel(defaultMissMatchModel[0].modelId);
+        saveTextModel(defaultMissMatchModel[0]);
       }
     }
     if (response.imageModel.length > 0 || response.textModel.length > 0) {
@@ -198,37 +246,119 @@ function SettingsScreen(): React.JSX.Element {
     value: size,
   }));
 
+  const toggleOpenAIProxy = (value: boolean) => {
+    setOpenAIProxyEnabled(value);
+    saveOpenAIProxyEnabled(value);
+  };
+
+  const renderProviderSettings = () => {
+    switch (selectedTab) {
+      case 'bedrock':
+        return (
+          <>
+            <CustomTextInput
+              label="API URL"
+              value={apiUrl}
+              onChangeText={setApiUrl}
+              placeholder="Enter API URL"
+            />
+            <CustomTextInput
+              label="API Key"
+              value={apiKey}
+              onChangeText={setApiKey}
+              placeholder="Enter API Key"
+              secureTextEntry={true}
+            />
+            <CustomDropdown
+              label="Region"
+              data={regionsData}
+              value={region}
+              onChange={(item: DropdownItem) => {
+                if (item.value !== '' && item.value !== region) {
+                  setRegion(item.value);
+                  saveRegion(item.value);
+                  fetchAndSetModelNames().then();
+                }
+              }}
+              placeholder="Select a region"
+            />
+          </>
+        );
+      case 'ollama':
+        return (
+          <CustomTextInput
+            label="Ollama API URL"
+            value={ollamaApiUrl}
+            onChangeText={setOllamaApiUrl}
+            placeholder="Enter Ollama API URL"
+          />
+        );
+      case 'deepseek':
+        return (
+          <CustomTextInput
+            label="DeepSeek API Key"
+            value={deepSeekApiKey}
+            onChangeText={setDeepSeekApiKey}
+            placeholder="Enter Deep Seek API Key"
+            secureTextEntry={true}
+          />
+        );
+      case 'openai':
+        return (
+          <>
+            <CustomTextInput
+              label="OpenAI API Key"
+              value={openAIApiKey}
+              onChangeText={setOpenAIApiKey}
+              placeholder="Enter OpenAI API Key"
+              secureTextEntry={true}
+            />
+            <View style={styles.proxySwitchContainer}>
+              <Text style={styles.proxyLabel}>Use Proxy</Text>
+              <Switch
+                style={[isMac ? styles.switch : {}]}
+                value={openAIProxyEnabled}
+                onValueChange={toggleOpenAIProxy}
+              />
+            </View>
+          </>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView style={styles.container}>
-        <Text style={styles.label}>API URL</Text>
-        <TextInput
-          style={styles.input}
-          value={apiUrl}
-          onChangeText={setApiUrl}
-          placeholder="Enter API URL"
-        />
-        <Text style={styles.label}>API Key</Text>
-        <TextInput
-          style={styles.input}
-          value={apiKey}
-          onChangeText={setApiKey}
-          placeholder="Enter API Key"
-          secureTextEntry={true}
-        />
-        <CustomDropdown
-          label="Region"
-          data={regionsData}
-          value={region}
-          onChange={(item: DropdownItem) => {
-            if (item.value !== '' && item.value !== region) {
-              setRegion(item.value);
-              saveRegion(item.value);
-              fetchAndSetModelNames().then();
-            }
-          }}
-          placeholder="Select a region"
-        />
+        <View style={styles.tabContainer}>
+          <TabButton
+            label={isMac ? 'Amazon Bedrock' : 'Bedrock'}
+            isSelected={selectedTab === 'bedrock'}
+            onPress={() => setSelectedTab('bedrock')}
+          />
+          <TabButton
+            label="Ollama"
+            isSelected={selectedTab === 'ollama'}
+            onPress={() => setSelectedTab('ollama')}
+          />
+          <TabButton
+            label="DeepSeek"
+            isSelected={selectedTab === 'deepseek'}
+            onPress={() => setSelectedTab('deepseek')}
+          />
+          <TabButton
+            label="OpenAI"
+            isSelected={selectedTab === 'openai'}
+            onPress={() => setSelectedTab('openai')}
+          />
+        </View>
+
+        <View style={styles.providerSettingsContainer}>
+          {renderProviderSettings()}
+        </View>
+
+        <Text style={[styles.label, styles.middleLabel]}>Select Model</Text>
         <CustomDropdown
           label="Text Model"
           data={textModelsData}
@@ -374,6 +504,19 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: 'black',
   },
+  firstLabel: {
+    marginBottom: 12,
+  },
+  middleLabel: {
+    marginTop: 10,
+    marginBottom: 12,
+  },
+  proxyLabel: {
+    fontSize: 14,
+    fontWeight: '400',
+    color: 'black',
+    marginLeft: 2,
+  },
   text: {
     fontSize: 14,
     fontWeight: '400',
@@ -394,6 +537,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginVertical: 10,
+  },
+  proxySwitchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginVertical: 0,
   },
   itemContainer: {
     flexDirection: 'row',
@@ -418,6 +567,37 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginVertical: 10,
     paddingBottom: 60,
+  },
+  apiKeyContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  apiKeyInputContainer: {
+    flex: 1,
+    marginRight: 10,
+  },
+  proxyContainer: {
+    marginBottom: 12,
+  },
+  proxyMacContainer: {
+    marginTop: 10,
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    marginBottom: 12,
+    marginHorizontal: Platform.OS === 'ios' ? -2 : 0,
+    borderRadius: 8,
+    backgroundColor: '#f5f5f5',
+    padding: 6,
+  },
+  providerSettingsContainer: {
+    marginBottom: 8,
+  },
+  switch: {
+    marginRight: -14,
+    width: 32,
+    height: 32,
   },
 });
 

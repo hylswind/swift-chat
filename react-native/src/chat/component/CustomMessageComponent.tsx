@@ -48,10 +48,21 @@ const CustomMessageComponent: React.FC<CustomMessageProps> = ({
       ? 'You'
       : currentMessage?.user.name ?? 'Bedrock';
 
+  const isDeepSeek = userName.includes('DeepSeek');
+  const isOpenAI = userName.includes('GPT');
+  const isOllama = userName.includes(':');
+  const modelIcon = isDeepSeek
+    ? require('../../assets/deepseek.png')
+    : isOpenAI
+    ? require('../../assets/openai.png')
+    : isOllama
+    ? require('../../assets/ollama-white.png')
+    : require('../../assets/bedrock.png');
+
   const imgSource =
     currentMessage?.user._id === 1
       ? require('../../assets/user.png')
-      : require('../../assets/bedrock.png');
+      : modelIcon;
 
   const handleImagePress = useCallback((pressMode: PressMode, url: string) => {
     if (pressMode === PressMode.Click) {
@@ -245,6 +256,7 @@ const customMarkedStyles: MarkedStyles = {
   h2: { fontSize: 24 },
   h3: { fontSize: 20 },
   h4: { fontSize: 18 },
+  blockquote: { marginVertical: 8 },
 };
 
 export default CustomMessageComponent;

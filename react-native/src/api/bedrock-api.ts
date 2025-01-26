@@ -9,8 +9,10 @@ import {
 import {
   getApiKey,
   getApiUrl,
+  getDeepSeekApiKey,
   getImageModel,
   getImageSize,
+  getOpenAIApiKey,
   getRegion,
   getTextModel,
 } from '../storage/StorageUtils.ts';
@@ -21,6 +23,8 @@ import {
   ImageInfo,
   TextContent,
 } from '../chat/util/BedrockMessageConvertor.ts';
+import { invokeOpenAIWithCallBack } from './open-api.ts';
+import { invokeOllamaWithCallBack } from './ollama-api.ts';
 
 type CallbackFunction = (
   result: string,
@@ -28,7 +32,7 @@ type CallbackFunction = (
   needStop: boolean,
   usage?: Usage
 ) => void;
-const isDev = false;
+export const isDev = false;
 const USAGE_START = '\n{"inputTokens":';
 export const invokeBedrockWithCallBack = async (
   messages: BedrockMessage[],
@@ -38,6 +42,37 @@ export const invokeBedrockWithCallBack = async (
   controller: AbortController,
   callback: CallbackFunction
 ) => {
+  const isDeepSeek = getTextModel().modelId.includes('deepseek');
+  const isOpenAI = getTextModel().modelId.includes('gpt');
+  const isOllama = getTextModel().modelId.startsWith('ollama-');
+  if (chatMode === ChatMode.Text && (isDeepSeek || isOpenAI || isOllama)) {
+    if (isDeepSeek && getDeepSeekApiKey().length === 0) {
+      callback('Please configure your DeepSeek API Key', true, true);
+      return;
+    }
+    if (isOpenAI && getOpenAIApiKey().length === 0) {
+      callback('Please configure your OpenAI API Key', true, true);
+      return;
+    }
+    if (isOllama) {
+      await invokeOllamaWithCallBack(
+        messages,
+        prompt,
+        shouldStop,
+        controller,
+        callback
+      );
+    } else {
+      await invokeOpenAIWithCallBack(
+        messages,
+        prompt,
+        shouldStop,
+        controller,
+        callback
+      );
+    }
+    return;
+  }
   if (!isConfigured()) {
     callback('Please configure your API URL and API Key', true, true);
     return;
@@ -65,7 +100,6 @@ export const invokeBedrockWithCallBack = async (
       reactNative: { textStreaming: true },
     };
     const url = getApiPrefix() + '/converse';
-    let intervalId: ReturnType<typeof setInterval>;
     let completeMessage = '';
     const timeoutId = setTimeout(() => controller.abort(), 60000);
     fetch(url!, options)
@@ -108,7 +142,6 @@ export const invokeBedrockWithCallBack = async (
         }
       })
       .catch(error => {
-        clearInterval(intervalId);
         if (shouldStop()) {
           if (completeMessage === '') {
             completeMessage = '...';
@@ -176,6 +209,7 @@ export const invokeBedrockWithCallBack = async (
 };
 
 export const requestAllModels = async (): Promise<AllModel> => {
+  const controller = new AbortController();
   const url = getApiPrefix() + '/models';
   const bodyObject = {
     region: getRegion(),
@@ -190,9 +224,10 @@ export const requestAllModels = async (): Promise<AllModel> => {
     body: JSON.stringify(bodyObject),
     reactNative: { textStreaming: true },
   };
-
+  const timeoutId = setTimeout(() => controller.abort(), 5000);
   try {
     const response = await fetch(url, options);
+    clearTimeout(timeoutId);
     if (!response.ok) {
       console.log(`HTTP error! status: ${response.status}`);
       return { imageModel: [], textModel: [] };
@@ -200,6 +235,7 @@ export const requestAllModels = async (): Promise<AllModel> => {
     return await response.json();
   } catch (error) {
     console.log('Error fetching models:', error);
+    clearTimeout(timeoutId);
     return { imageModel: [], textModel: [] };
   }
 };

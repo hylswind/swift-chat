@@ -41,6 +41,9 @@ const currentSessionIdKey = keyPrefix + 'currentSessionId';
 const hapticEnabledKey = keyPrefix + 'hapticEnabled';
 const apiUrlKey = keyPrefix + 'apiUrlKey';
 const apiKeyTag = keyPrefix + 'apiKeyTag';
+const ollamaApiUrlKey = keyPrefix + 'ollamaApiUrlKey';
+const deepSeekApiKeyTag = keyPrefix + 'deepSeekApiKeyTag';
+const openAIApiKeyTag = keyPrefix + 'openAIApiKeyTag';
 const regionKey = keyPrefix + 'regionKey';
 const textModelKey = keyPrefix + 'textModelKey';
 const imageModelKey = keyPrefix + 'imageModelKey';
@@ -50,13 +53,18 @@ const modelUsageKey = keyPrefix + 'modelUsageKey';
 const systemPromptsKey = keyPrefix + 'systemPromptsKey';
 const currentSystemPromptKey = keyPrefix + 'currentSystemPromptKey';
 const currentPromptIdKey = keyPrefix + 'currentPromptIdKey';
+const openAIProxyEnabledKey = keyPrefix + 'openAIProxyEnabledKey';
 
 let currentApiUrl: string | undefined;
 let currentApiKey: string | undefined;
+let currentOllamaApiUrl: string | undefined;
+let currentDeepSeekApiKey: string | undefined;
+let currentOpenAIApiKey: string | undefined;
 let currentRegion: string | undefined;
 let currentImageModel: Model | undefined;
 let currentTextModel: Model | undefined;
 let currentSystemPrompts: SystemPrompt[] | undefined;
+let currentOpenAIProxyEnabled: boolean | undefined;
 
 export function saveMessages(
   sessionId: number,
@@ -139,12 +147,39 @@ export function getApiUrl(): string {
   }
 }
 
+export function getOllamaApiUrl(): string {
+  if (currentOllamaApiUrl) {
+    return currentOllamaApiUrl;
+  } else {
+    currentOllamaApiUrl = storage.getString(ollamaApiUrlKey) ?? '';
+    return currentOllamaApiUrl;
+  }
+}
+
 export function getApiKey(): string {
   if (currentApiKey) {
     return currentApiKey;
   } else {
     currentApiKey = encryptStorage.getString(apiKeyTag) ?? '';
     return currentApiKey;
+  }
+}
+
+export function getDeepSeekApiKey(): string {
+  if (currentDeepSeekApiKey) {
+    return currentDeepSeekApiKey;
+  } else {
+    currentDeepSeekApiKey = encryptStorage.getString(deepSeekApiKeyTag) ?? '';
+    return currentDeepSeekApiKey;
+  }
+}
+
+export function getOpenAIApiKey(): string {
+  if (currentOpenAIApiKey) {
+    return currentOpenAIApiKey;
+  } else {
+    currentOpenAIApiKey = encryptStorage.getString(openAIApiKeyTag) ?? '';
+    return currentOpenAIApiKey;
   }
 }
 
@@ -162,6 +197,21 @@ export function saveApiUrl(apiUrl: string) {
 
 export function saveApiKey(apiKey: string) {
   encryptStorage.set(apiKeyTag, apiKey);
+}
+
+export function saveOllamaApiURL(apiUrl: string) {
+  currentOllamaApiUrl = apiUrl;
+  storage.set(ollamaApiUrlKey, apiUrl);
+}
+
+export function saveDeepSeekApiKey(apiKey: string) {
+  currentDeepSeekApiKey = apiKey;
+  encryptStorage.set(deepSeekApiKeyTag, apiKey);
+}
+
+export function saveOpenAIApiKey(apiKey: string) {
+  currentOpenAIApiKey = apiKey;
+  encryptStorage.set(openAIApiKeyTag, apiKey);
 }
 
 export function saveRegion(region: string) {
@@ -324,4 +374,19 @@ export function getPromptId() {
 
 export function savePromptId(promptId: number) {
   storage.set(currentPromptIdKey, promptId);
+}
+
+export function saveOpenAIProxyEnabled(enabled: boolean) {
+  currentOpenAIProxyEnabled = enabled;
+  storage.set(openAIProxyEnabledKey, enabled);
+}
+
+export function getOpenAIProxyEnabled() {
+  if (currentOpenAIProxyEnabled !== undefined) {
+    return currentOpenAIProxyEnabled;
+  } else {
+    currentOpenAIProxyEnabled =
+      storage.getBoolean(openAIProxyEnabledKey) ?? true;
+    return currentOpenAIProxyEnabled;
+  }
 }
