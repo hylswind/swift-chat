@@ -133,8 +133,8 @@ SwiftChat 是一款快速响应的 AI 聊天应用，采用 [React Native](https
 
 1. 下载应用
 
-    - Android 应用点击 [下载](https://github.com/aws-samples/swift-chat/releases/download/1.9.0/SwiftChat.apk)
-    - macOS 应用点击 [下载](https://github.com/aws-samples/swift-chat/releases/download/1.9.0/SwiftChat.dmg)
+    - Android 应用点击 [下载](https://github.com/aws-samples/swift-chat/releases/download/1.10.0/SwiftChat.apk)
+    - macOS 应用点击 [下载](https://github.com/aws-samples/swift-chat/releases/download/1.10.0/SwiftChat.dmg)
     - iOS (目前不提供 iOS 版本，您可以使用 Xcode 在本地构建)
 
 2. 启动应用，点击左侧菜单按钮，并点击底部的 **Settings**。
