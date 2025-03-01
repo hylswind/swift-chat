@@ -39,6 +39,7 @@ class ImageRequest(BaseModel):
 class ConverseRequest(BaseModel):
     messages: List[dict] = []
     modelId: str
+    enableThinking: bool | None = None
     region: str
     system: List[dict] | None = None
 
@@ -92,39 +93,76 @@ def verify_and_refresh_token(credentials: Annotated[HTTPAuthorizationCredentials
     return verify_api_key(credentials, use_cache_token=False)
 
 
+async def create_bedrock_command(request: ConverseRequest) -> tuple[boto3.client, dict]:
+    model_id = request.modelId
+    region = request.region
+
+    client = boto3.client("bedrock-runtime", region_name=region)
+
+    max_tokens = 4096
+    if model_id.startswith('meta.llama'):
+        max_tokens = 2048
+    if 'claude-3-7-sonnet' in model_id:
+        max_tokens = 64000
+
+    for message in request.messages:
+        if message["role"] == "user":
+            for content in message["content"]:
+                if 'image' in content:
+                    image_bytes = base64.b64decode(content['image']['source']['bytes'])
+                    content['image']['source']['bytes'] = image_bytes
+                if 'video' in content:
+                    video_bytes = base64.b64decode(content['video']['source']['bytes'])
+                    content['video']['source']['bytes'] = video_bytes
+                if 'document' in content:
+                    document_bytes = base64.b64decode(content['document']['source']['bytes'])
+                    content['document']['source']['bytes'] = document_bytes
+
+    command = {
+        "inferenceConfig": {"maxTokens": max_tokens},
+        "messages": request.messages,
+        "modelId": model_id
+    }
+
+    if request.enableThinking:
+        command['additionalModelRequestFields'] = {
+            "reasoning_config": {
+                "type": "enabled",
+                "budget_tokens": 16000
+            }
+        }
+
+    if request.system is not None:
+        command["system"] = request.system
+
+    return client, command
+
+
+@app.post("/api/converse/v2")
+async def converse_v2(request: ConverseRequest,
+                      _: Annotated[str, Depends(verify_api_key)]):
+    try:
+        client, command = await create_bedrock_command(request)
+
+        def event_generator():
+            try:
+                response = client.converse_stream(**command)
+                for item in response['stream']:
+                    yield json.dumps(item)
+            except Exception as err:
+                yield f"Error: {str(err)}"
+
+        return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+    except Exception as error:
+        return PlainTextResponse(f"Error: {str(error)}", status_code=500)
+
+
 @app.post("/api/converse")
 async def converse(request: ConverseRequest,
                    _: Annotated[str, Depends(verify_api_key)]):
-    model_id = request.modelId
-    region = request.region
-    if region == '':
-        region = request.region
-
     try:
-        client = boto3.client("bedrock-runtime",
-                              region_name=region)
-        max_tokens = 4096
-        if model_id.startswith('meta.llama'):
-            max_tokens = 2048
-        for message in request.messages:
-            if message["role"] == "user":
-                for content in message["content"]:
-                    if 'image' in content:
-                        image_bytes = base64.b64decode(content['image']['source']['bytes'])
-                        content['image']['source']['bytes'] = image_bytes
-                    if 'video' in content:
-                        video_bytes = base64.b64decode(content['video']['source']['bytes'])
-                        content['video']['source']['bytes'] = video_bytes
-                    if 'document' in content:
-                        document_bytes = base64.b64decode(content['document']['source']['bytes'])
-                        content['document']['source']['bytes'] = document_bytes
-        command = {
-            "inferenceConfig": {"maxTokens": max_tokens},
-            "messages": request.messages,
-            "modelId": model_id
-        }
-        if request.system is not None:
-            command["system"] = request.system
+        client, command = await create_bedrock_command(request)
 
         def event_generator():
             try:

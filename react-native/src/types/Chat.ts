@@ -97,8 +97,9 @@ export type UsagePrice = {
   largeImagePrice: number;
 };
 
-export interface IMessageWithToken extends IMessage {
+export interface SwiftChatMessage extends IMessage {
   usage?: Usage;
+  reasoning?: string;
 }
 
 export interface SystemPrompt {
@@ -106,4 +107,23 @@ export interface SystemPrompt {
   name: string;
   prompt: string;
   includeHistory: boolean;
+}
+
+export interface BedrockChunk {
+  contentBlockDelta: {
+    delta: Delta;
+  };
+  metadata: {
+    usage: Usage;
+  };
+  detail: string;
+}
+
+export interface Delta {
+  text: string;
+  reasoningContent: ReasoningContent;
+}
+
+export interface ReasoningContent {
+  text: string;
 }

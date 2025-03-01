@@ -1,6 +1,8 @@
 ## SwiftChat Backend API
 
-The SwiftChat backend API is implemented using Python language and the FastAPI framework. It is packaged as a Docker image using [aws-lambda-adapter](https://github.com/awslabs/aws-lambda-web-adapter) and deployed to AWS App Runner or AWS Lambda for execution.
+The SwiftChat backend API is implemented using Python language and the FastAPI framework. It is packaged as a Docker
+image using [aws-lambda-adapter](https://github.com/awslabs/aws-lambda-web-adapter) and deployed to AWS App Runner or
+AWS Lambda for execution.
 
 ## API Reference
 
@@ -41,7 +43,40 @@ export API_KEY=<API Key>
    Bedrock [converse stream](https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/bedrock-runtime/client/converse_stream.html)
    API. You can also add `image` or `document` according to the specification to support multimodal conversations.
 
-2. `/api/image`
+2. `/api/converse/v2`
+
+   ```bash
+   curl -N "${API_URL}/api/converse" \
+   --header 'Content-Type: application/json' \
+   --header "Authorization: Bearer ${API_KEY}" \
+   --data '{
+     "messages": [
+       {
+         "role": "user",
+         "content": [
+           {
+             "text": "Hi"
+           }
+         ]
+       }
+     ],
+     "modelId": "anthropic.claude-3-5-sonnet-20240620-v1:0",
+     "region": "us-west-2",
+     "enableThinking": false,
+     "system": [
+       "text": "your system prompt"
+     ]
+   }'
+   ```
+
+   This API is used to implement streaming conversations for v2, and it returns the raw Amazon Bedrock response json string,
+   you need to parse it for display.
+
+   The `messages` under body fully complies with the messages structure specification in Amazon
+   Bedrock [converse stream](https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/bedrock-runtime/client/converse_stream.html)
+   API. You can also add `image` or `document` according to the specification to support multimodal conversations.
+
+3. `/api/image`
 
    ```bash
    curl "${API_URL}/api/image" \
@@ -58,7 +93,7 @@ export API_KEY=<API Key>
 
    This API is used to generate images and returns a base64 encoded string of the image.
 
-3. `/api/models`
+4. `/api/models`
 
    ```bash
    curl "${API_URL}/api/models" \
@@ -73,7 +108,7 @@ export API_KEY=<API Key>
    This API is used to get a list of all streaming-supported text models and image generation models in the specified
    region.
 
-4. `/api/upgrade`
+5. `/api/upgrade`
    ```bash
    curl "${API_URL}/api/upgrade" \
    --header 'Content-Type: application/json' \
