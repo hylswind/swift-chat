@@ -38,6 +38,7 @@ import Disc from '@jsamr/counter-style/lib/es/presets/disc';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-expect-error
 import MathView from 'react-native-math-view';
+import { isAndroid } from '../../../utils/PlatformUtils.ts';
 
 const CustomCodeHighlighter = lazy(() => import('./CustomCodeHighlighter'));
 let mathViewIndex = 0;
@@ -143,7 +144,7 @@ export class CustomMarkdownRenderer
 
   getTextView(children: string | ReactNode[], styles?: TextStyle): ReactNode {
     return (
-      <Text selectable key={this.getKey()} style={styles}>
+      <Text selectable={!isAndroid} key={this.getKey()} style={styles}>
         {children}
       </Text>
     );
@@ -278,7 +279,7 @@ export class CustomMarkdownRenderer
     };
 
     return (
-      <ScrollView horizontal={true}>
+      <ScrollView horizontal={true} style={customStyles.tableScroll}>
         <Table
           borderStyle={{ borderWidth, borderColor }}
           style={tableStyleRest}>
@@ -359,6 +360,7 @@ export class CustomMarkdownRenderer
         <MathView
           key={getMathKey()}
           math={text}
+          renderError={() => this.getTextView(_raw, customStyles.text)}
           style={
             isDisplayMode
               ? customStyles.displayMathView
@@ -416,13 +418,6 @@ const customStyles = StyleSheet.create({
     paddingVertical: 1.3,
     fontFamily: Platform.OS === 'ios' ? 'Menlo-Regular' : 'monospace',
   },
-  codeSpanContainer: {
-    backgroundColor: '#f5f5f5',
-    borderRadius: 5,
-    paddingVertical: 1,
-    paddingHorizontal: 4,
-    alignSelf: 'flex-start',
-  },
   codeSpanText: {
     fontStyle: 'normal',
     backgroundColor: '#f5f5f5',
@@ -440,7 +435,7 @@ const customStyles = StyleSheet.create({
     borderRadius: 8,
     overflow: 'hidden',
     backgroundColor: '#F9F9F9',
-    marginVertical: 4,
+    marginVertical: 6,
   },
   header: {
     flexDirection: 'row',
@@ -481,6 +476,9 @@ const customStyles = StyleSheet.create({
   displayMathView: {
     marginVertical: 0,
     alignSelf: 'center',
+  },
+  tableScroll: {
+    marginVertical: 4,
   },
   inlineMathView: {},
 });
