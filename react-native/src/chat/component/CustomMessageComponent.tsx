@@ -6,6 +6,7 @@ import React, {
   useState,
 } from 'react';
 import {
+  Dimensions,
   Image,
   NativeSyntheticEvent,
   Platform,
@@ -41,12 +42,15 @@ import ImageSpinner from './ImageSpinner.tsx';
 import { State, TapGestureHandler } from 'react-native-gesture-handler';
 import { getModelTagByUserName } from '../../utils/ModelUtils.ts';
 import { isAndroid } from '../../utils/PlatformUtils.ts';
+import { useAppContext } from '../../history/AppProvider.tsx';
 
 interface CustomMessageProps extends MessageProps<SwiftChatMessage> {
   chatStatus: ChatStatus;
   isLastAIMessage?: boolean;
   onRegenerate?: () => void;
 }
+
+const { width: screenWidth } = Dimensions.get('window');
 
 const CustomMessageComponent: React.FC<CustomMessageProps> = ({
   currentMessage,
@@ -67,6 +71,10 @@ const CustomMessageComponent: React.FC<CustomMessageProps> = ({
   const isLoading =
     chatStatus === ChatStatus.Running && currentMessage?.text === '...';
   const [forceShowButtons, setForceShowButtons] = useState(false);
+  const isUser = useRef(currentMessage?.user._id === 1);
+  const { drawerType } = useAppContext();
+  const chatScreenWidth =
+    isMac && drawerType === 'permanent' ? screenWidth - 300 : screenWidth;
 
   const setIsEditValue = useCallback(
     (value: boolean) => {
@@ -117,12 +125,16 @@ const CustomMessageComponent: React.FC<CustomMessageProps> = ({
     Clipboard.setString(copyText);
   }, [currentMessage?.reasoning, currentMessage?.text]);
 
+  const currentUser = currentMessage?.user;
+  const showRefresh =
+    !isUser.current && !currentUser?.name?.includes('Nova Sonic');
+
   const userInfo = useMemo(() => {
     if (!currentMessage) {
       return { userName: '', imgSource: null };
     }
     const user = currentMessage.user;
-    const userName = user._id === 1 ? 'You' : user.name ?? 'Bedrock';
+    const userName = user.name ?? 'Bedrock';
     const currentModelTag = getModelTagByUserName(user.modelTag, userName);
 
     const modelIcon =
@@ -135,19 +147,13 @@ const CustomMessageComponent: React.FC<CustomMessageProps> = ({
         : currentModelTag === ModelTag.Ollama
         ? require('../../assets/ollama_white.png')
         : require('../../assets/bedrock.png');
-
-    const imgSource =
-      currentMessage.user._id === 1
-        ? require('../../assets/user.png')
-        : modelIcon;
-
-    return { userName, imgSource };
+    return { userName, modelIcon };
   }, [currentMessage]);
 
   const headerContent = useMemo(() => {
     return (
       <>
-        <Image source={userInfo.imgSource} style={styles.avatar} />
+        <Image source={userInfo.modelIcon} style={styles.avatar} />
         <Text style={styles.name}>{userInfo.userName}</Text>
       </>
     );
@@ -186,7 +192,7 @@ const CustomMessageComponent: React.FC<CustomMessageProps> = ({
     if (
       !currentMessage?.reasoning ||
       currentMessage?.reasoning.length === 0 ||
-      currentMessage.user._id === 1
+      isUser.current
     ) {
       return null;
     }
@@ -247,7 +253,7 @@ const CustomMessageComponent: React.FC<CustomMessageProps> = ({
       return null;
     }
 
-    if (currentMessage.user._id !== 1) {
+    if (!isUser.current) {
       return (
         <Markdown
           value={currentMessage.text}
@@ -259,48 +265,77 @@ const CustomMessageComponent: React.FC<CustomMessageProps> = ({
       );
     }
 
-    return <Text style={styles.questionText}>{currentMessage.text}</Text>;
-  }, [currentMessage, customMarkdownRenderer, customTokenizer]);
+    return (
+      <Text
+        style={{
+          ...styles.questionText,
+          ...{ maxWidth: (chatScreenWidth * 3) / 4 },
+        }}
+        selectable>
+        {currentMessage.text}
+      </Text>
+    );
+  }, [
+    currentMessage,
+    customMarkdownRenderer,
+    customTokenizer,
+    chatScreenWidth,
+  ]);
 
   const messageActionButtons = useMemo(() => {
+    const metricsText = currentMessage?.metrics
+      ? `latency ${currentMessage.metrics.latencyMs}s | ${currentMessage.metrics.speed} tok/s`
+      : null;
     return (
-      <View style={styles.actionButtonsContainer}>
-        <TouchableOpacity
-          onPress={() => {
-            handleCopy();
-            setCopied(true);
-          }}
-          style={styles.actionButton}>
-          <Image
-            source={
-              copied
-                ? require('../../assets/done.png')
-                : require('../../assets/copy_grey.png')
-            }
-            style={styles.actionButtonIcon}
-          />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => setIsEditValue(!isEdit)}
-          style={styles.actionButton}>
-          <Image
-            source={
-              isEdit
-                ? require('../../assets/select.png')
-                : require('../../assets/select_grey.png')
-            }
-            style={styles.actionButtonIcon}
-          />
-        </TouchableOpacity>
-
-        {currentMessage?.user._id !== 1 && (
-          <TouchableOpacity onPress={onRegenerate} style={styles.actionButton}>
+      <View
+        style={{
+          ...styles.actionButtonsContainer,
+          ...{ justifyContent: isUser.current ? 'flex-end' : 'space-between' },
+        }}>
+        <View style={styles.actionButtonInnerContainer}>
+          <TouchableOpacity
+            onPress={() => {
+              handleCopy();
+              setCopied(true);
+            }}
+            style={styles.actionButton}>
             <Image
-              source={require('../../assets/refresh.png')}
+              source={
+                copied
+                  ? require('../../assets/done.png')
+                  : require('../../assets/copy_grey.png')
+              }
               style={styles.actionButtonIcon}
             />
           </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => setIsEditValue(!isEdit)}
+            style={styles.actionButton}>
+            <Image
+              source={
+                isEdit
+                  ? require('../../assets/select.png')
+                  : require('../../assets/select_grey.png')
+              }
+              style={styles.actionButtonIcon}
+            />
+          </TouchableOpacity>
+
+          {showRefresh && (
+            <TouchableOpacity
+              onPress={onRegenerate}
+              style={styles.actionButton}>
+              <Image
+                source={require('../../assets/refresh.png')}
+                style={styles.actionButtonIcon}
+              />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {metricsText && !isUser.current && (
+          <Text style={styles.metricsText}>{metricsText}</Text>
         )}
       </View>
     );
@@ -310,7 +345,8 @@ const CustomMessageComponent: React.FC<CustomMessageProps> = ({
     isEdit,
     onRegenerate,
     setIsEditValue,
-    currentMessage,
+    showRefresh,
+    currentMessage?.metrics,
   ]);
 
   if (!currentMessage) {
@@ -323,7 +359,7 @@ const CustomMessageComponent: React.FC<CustomMessageProps> = ({
         style={styles.header}
         activeOpacity={1}
         onPress={() => setClickTitleCopied(true)}>
-        {headerContent}
+        {!isUser.current && headerContent}
         {copyButton}
       </TouchableOpacity>
       <View style={styles.marked_box}>
@@ -360,16 +396,22 @@ const CustomMessageComponent: React.FC<CustomMessageProps> = ({
               const { height } = event.nativeEvent.contentSize;
               setInputHeight(height);
             }}
-            style={[
-              styles.inputText,
-              // eslint-disable-next-line react-native/no-inline-styles
-              {
+            style={{
+              ...styles.inputText,
+              ...{
                 fontWeight: isMac ? '300' : 'normal',
                 lineHeight: isMac ? 26 : Platform.OS === 'android' ? 24 : 28,
                 paddingTop: Platform.OS === 'android' ? 7 : 3,
-                marginBottom: -inputHeight * (isAndroid ? 0 : 0.138) + 8,
+                marginBottom:
+                  -inputHeight * (isAndroid ? 0 : isMac ? 0.115 : 0.138) +
+                  (isMac ? 10 : 8),
               },
-            ]}
+              ...(isUser.current && {
+                flex: 1,
+                alignSelf: 'flex-end',
+                maxWidth: (chatScreenWidth * 3) / 4,
+              }),
+            }}
             textAlignVertical="top">
             {currentMessage.text}
           </TextInput>
@@ -391,7 +433,6 @@ const CustomMessageComponent: React.FC<CustomMessageProps> = ({
 const styles = StyleSheet.create({
   container: {
     marginLeft: 12,
-    marginRight: 8,
     marginVertical: 4,
   },
   marked_box: {
@@ -427,9 +468,15 @@ const styles = StyleSheet.create({
   },
   questionText: {
     flex: 1,
-    fontSize: 16,
+    alignSelf: 'flex-end',
+    backgroundColor: '#f2f2f2',
+    borderRadius: 22,
+    overflow: 'hidden',
+    marginVertical: 8,
+    paddingHorizontal: 16,
     lineHeight: 24,
-    paddingVertical: 6,
+    paddingVertical: 10,
+    fontSize: 16,
     color: '#333',
   },
   inputText: {
@@ -470,11 +517,14 @@ const styles = StyleSheet.create({
   },
   actionButtonsContainer: {
     flexDirection: 'row',
-    justifyContent: 'flex-start',
     alignItems: 'center',
     marginLeft: -8,
     marginTop: -2,
     marginBottom: 4,
+  },
+  actionButtonInnerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   actionButton: {
     padding: 8,
@@ -482,6 +532,11 @@ const styles = StyleSheet.create({
   actionButtonIcon: {
     width: 16,
     height: 16,
+  },
+  metricsText: {
+    fontSize: 12,
+    color: '#999',
+    marginRight: 4,
   },
 });
 

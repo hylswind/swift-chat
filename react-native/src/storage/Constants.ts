@@ -1,6 +1,7 @@
 import { Model, ModelTag, SystemPrompt } from '../types/Chat.ts';
 import { getDeepSeekApiKey, getOpenAIApiKey } from './StorageUtils.ts';
 
+// AWS credentials - empty by default, to be filled by user
 const RegionList = [
   'us-west-2',
   'us-east-1',
@@ -18,6 +19,17 @@ const RegionList = [
 export const DefaultRegion = 'us-west-2';
 
 export const GPTModels = [
+  { modelName: 'GPT-4.1', modelId: 'gpt-4.1', modelTag: ModelTag.OpenAI },
+  {
+    modelName: 'GPT-4.1-mini',
+    modelId: 'gpt-4.1-mini',
+    modelTag: ModelTag.OpenAI,
+  },
+  {
+    modelName: 'GPT-4.1-nano',
+    modelId: 'gpt-4.1-nano',
+    modelTag: ModelTag.OpenAI,
+  },
   { modelName: 'GPT-4o', modelId: 'gpt-4o', modelTag: ModelTag.OpenAI },
   {
     modelName: 'GPT-4o mini',
@@ -40,6 +52,7 @@ export const DeepSeekModels = [
 ];
 
 export const BedrockThinkingModels = ['Claude 3.7 Sonnet'];
+export const BedrockVoiceModels = ['Nova Sonic'];
 
 export const DefaultTextModel = [
   {
@@ -54,6 +67,65 @@ const DefaultImageModel = {
   modelId: 'stability.sd3-5-large-v1:0',
   modelTag: ModelTag.Bedrock,
 };
+
+export const VoiceIDList = [
+  {
+    voiceName: 'Matthew (American English)',
+    voiceId: 'matthew',
+  },
+  {
+    voiceName: 'Tiffany (American English)',
+    voiceId: 'tiffany',
+  },
+  {
+    voiceName: 'Amy (British English)',
+    voiceId: 'amy',
+  },
+];
+
+export const DefaultVoiceSystemPrompts = [
+  {
+    id: -4,
+    name: 'LearnWords',
+    prompt: `Please act as an English vocabulary coach. In each response, follow this exact format:
+
+1. If the user has spoken: Score their speaking from 1-10
+2. If score < 7: Provide brief correction tips and ask them to repeat the same word
+3. If score ≥ 7: ask user to read a new English word
+
+Keep all responses under 5 sentences. Begin by introducing yourself and providing the first practice word.
+
+Remember: ALWAYS start with a score after the user speaks`,
+    includeHistory: true,
+    promptType: 'voice',
+    allowInterruption: false,
+  },
+  {
+    id: -5,
+    name: 'LearnSentences',
+    prompt: `Please act as an English pronunciation coach. In each response, follow this exact format:
+
+1. If the user has spoken: Score their pronunciation from 1-10
+2. If score < 7: Provide brief correction tips and ask them to repeat the same sentence
+3. If score ≥ 7: Introduce a new common English phrase for practice
+
+Keep all responses under 5 sentences. Begin by introducing yourself and providing the first practice sentence.
+
+Remember: ALWAYS start with a score after the user speaks`,
+    includeHistory: true,
+    promptType: 'voice',
+    allowInterruption: false,
+  },
+  {
+    id: -6,
+    name: 'Story',
+    prompt:
+      'You are a storytelling expert. Please first ask the user what type of story they would like to hear, and then tell that story with emotion and expressiveness.',
+    includeHistory: true,
+    promptType: 'voice',
+    allowInterruption: true,
+  },
+];
 
 const DefaultSystemPrompts = [
   {
@@ -84,7 +156,11 @@ Stay focused on practical improvements only.`,
       'You are an AI assistant with a passion for creative writing and storytelling. Your task is to collaborate with users to create engaging stories, offering imaginative plot twists and dynamic character development. Encourage the user to contribute their ideas and build upon them to create a captivating narrative.',
     includeHistory: true,
   },
+  ...DefaultVoiceSystemPrompts,
 ];
+
+export const DefaultVoicePrompt =
+  'You are a friendly assistant. The user and you will engage in a spoken dialog exchanging the transcripts of a natural real-time conversation. Keep your responses short, generally within five sentences for chatty scenarios.';
 
 export function getAllRegions() {
   return RegionList;

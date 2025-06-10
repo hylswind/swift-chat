@@ -6,6 +6,7 @@ import {
   Model,
   ModelTag,
   SystemPrompt,
+  TokenResponse,
   UpgradeInfo,
   Usage,
 } from '../types/Chat.ts';
@@ -20,6 +21,7 @@ import {
   getRegion,
   getTextModel,
   getThinkingEnabled,
+  saveTokenInfo,
 } from '../storage/StorageUtils.ts';
 import { saveImageToLocal } from '../chat/util/FileUtils.ts';
 import {
@@ -115,7 +117,7 @@ export const invokeBedrockWithCallBack = async (
       signal: controller.signal,
       reactNative: { textStreaming: true },
     };
-    const url = getApiPrefix() + '/converse/v2';
+    const url = getApiPrefix() + '/converse/v3';
     let completeMessage = '';
     let completeReasoning = '';
     const timeoutId = setTimeout(() => controller.abort(), 60000);
@@ -315,6 +317,43 @@ export const requestAllModels = async (): Promise<AllModel> => {
   }
 };
 
+export const requestToken = async (): Promise<TokenResponse | null> => {
+  if (getApiUrl() === '') {
+    return null;
+  }
+
+  const url = getApiPrefix() + '/token';
+  const bodyObject = {
+    region: getRegion(),
+  };
+
+  const options = {
+    method: 'POST',
+    headers: {
+      accept: 'application/json',
+      'content-type': 'application/json',
+      Authorization: 'Bearer ' + getApiKey(),
+    },
+    body: JSON.stringify(bodyObject),
+    reactNative: { textStreaming: true },
+  };
+
+  try {
+    const response = await fetch(url, options);
+    if (!response.ok) {
+      console.log(`HTTP error! status: ${response.status}`);
+      return null;
+    }
+
+    const tokenResponse = (await response.json()) as TokenResponse;
+    saveTokenInfo(tokenResponse);
+    return tokenResponse;
+  } catch (error) {
+    console.log('Error fetching token:', error);
+    return null;
+  }
+};
+
 export const requestUpgradeInfo = async (
   os: string,
   version: string
@@ -427,71 +466,45 @@ export const genImage = async (
 
 function parseChunk(rawChunk: string) {
   if (rawChunk.length > 0) {
-    try {
-      const bedrockChunk: BedrockChunk = JSON.parse(rawChunk);
-      return extractChunkContent(bedrockChunk, rawChunk);
-    } catch (error) {
-      const jsonParts = splitJsonStrings(rawChunk);
-      if (jsonParts.length > 0) {
-        let combinedReasoning = '';
-        let combinedText = '';
-        let lastUsage;
-        for (let i = 0; i < jsonParts.length; i++) {
-          const part = jsonParts[i];
-          try {
-            const chunk: BedrockChunk = JSON.parse(part);
-            const content = extractChunkContent(chunk, rawChunk);
-            if (content.reasoning) {
-              combinedReasoning += content.reasoning;
-            }
-            if (content.text) {
-              combinedText += content.text;
-            }
-            if (content.usage) {
-              lastUsage = content.usage;
-            }
-          } catch (innerError) {
-            console.log('Error parsing split JSON part: ' + innerError);
-          }
+    const dataChunks = rawChunk.split('\n\n');
+    if (dataChunks.length > 0) {
+      let combinedReasoning = '';
+      let combinedText = '';
+      let lastUsage;
+      for (let i = 0; i < dataChunks.length; i++) {
+        const part = dataChunks[i];
+        if (part.length === 0) {
+          continue;
         }
-        return {
-          reasoning: combinedReasoning,
-          text: combinedText,
-          usage: lastUsage,
-        };
-      } else {
-        // return and display the raw error
-        console.log('Unexpected raw chunk: ' + rawChunk);
-        return {
-          reasoning: undefined,
-          text: rawChunk,
-          usage: undefined,
-        };
+        try {
+          const chunk: BedrockChunk = JSON.parse(part);
+          const content = extractChunkContent(chunk, rawChunk);
+          if (content.reasoning) {
+            combinedReasoning += content.reasoning;
+          }
+          if (content.text) {
+            combinedText += content.text;
+          }
+          if (content.usage) {
+            lastUsage = content.usage;
+          }
+        } catch (innerError) {
+          console.log('DataChunk parse error:' + innerError, part);
+          return {
+            reasoning: combinedReasoning,
+            text: rawChunk,
+            usage: lastUsage,
+          };
+        }
       }
+      return {
+        reasoning: combinedReasoning,
+        text: combinedText,
+        usage: lastUsage,
+      };
     }
   }
   return null;
-}
-
-function splitJsonStrings(input: string): string[] {
-  const result: string[] = [];
-  let start = 0;
-  let balance = 0;
-  for (let i = 0; i < input.length; i++) {
-    const char = input[i];
-    if (char === '{') {
-      if (balance === 0) {
-        start = i;
-      }
-      balance++;
-    } else if (char === '}') {
-      balance--;
-      if (balance === 0) {
-        result.push(input.slice(start, i + 1));
-      }
-    }
-  }
-  return result;
 }
 
 /**

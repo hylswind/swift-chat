@@ -34,6 +34,7 @@ import {
   getRegion,
   getTextModel,
   getThinkingEnabled,
+  getVoiceId,
   isNewStabilityImageModel,
   saveAllModels,
   saveDeepSeekApiKey,
@@ -49,6 +50,7 @@ import {
   saveRegion,
   saveTextModel,
   saveThinkingEnabled,
+  saveVoiceId,
   updateTextModelUsageOrder,
 } from '../storage/StorageUtils.ts';
 import { CustomHeaderRightButton } from '../chat/component/CustomHeaderRightButton.tsx';
@@ -65,9 +67,11 @@ import {
 } from './ModelPrice.ts';
 import {
   BedrockThinkingModels,
+  BedrockVoiceModels,
   DefaultTextModel,
   getAllRegions,
   getDefaultApiKeyModels,
+  VoiceIDList,
 } from '../storage/Constants.ts';
 import CustomTextInput from './CustomTextInput.tsx';
 import { requestAllOllamaModels } from '../api/ollama-api.ts';
@@ -117,6 +121,7 @@ function SettingsScreen(): React.JSX.Element {
   const controllerRef = useRef<AbortController | null>(null);
   const [selectedTab, setSelectedTab] = useState('bedrock');
   const [thinkingEnabled, setThinkingEnabled] = useState(getThinkingEnabled);
+  const [voiceId, setVoiceId] = useState(getVoiceId);
   const { sendEvent } = useAppContext();
   const sendEventRef = useRef(sendEvent);
 
@@ -130,6 +135,11 @@ function SettingsScreen(): React.JSX.Element {
 
     const response = await requestAllModels();
     addBedrockPrefixToDeepseekModels(response.textModel);
+    if (Platform.OS === 'android') {
+      response.textModel = response.textModel.filter(
+        model => model.modelName !== 'Nova Sonic'
+      );
+    }
     if (response.imageModel.length > 0) {
       setImageModels(response.imageModel);
       const imageModel = getImageModel();
@@ -147,6 +157,7 @@ function SettingsScreen(): React.JSX.Element {
     let openAICompatModelList: Model[] = [];
     if (openAICompatModels.length > 0) {
       openAICompatModelList = openAICompatModels.split(',').map(modelId => {
+        modelId = modelId.trim().replace(/(\r\n|\n|\r)/gm, '');
         const parts = modelId.split('/');
         return {
           modelId: modelId.trim(),
@@ -222,7 +233,7 @@ function SettingsScreen(): React.JSX.Element {
     if (apiUrl === getApiUrl() && apiKey === getApiKey()) {
       return;
     }
-    saveKeys(apiUrl, apiKey);
+    saveKeys(apiUrl.trim(), apiKey.trim());
     fetchAndSetModelNames().then();
     fetchUpgradeInfo().then();
   }, [apiUrl, apiKey, fetchAndSetModelNames]);
@@ -316,6 +327,10 @@ function SettingsScreen(): React.JSX.Element {
     label: size,
     value: size,
   }));
+  const voiceIDData: DropdownItem[] = VoiceIDList.map(voice => ({
+    label: voice.voiceName,
+    value: voice.voiceId,
+  }));
 
   const toggleOpenAIProxy = (value: boolean) => {
     setOpenAIProxyEnabled(value);
@@ -389,16 +404,6 @@ function SettingsScreen(): React.JSX.Element {
               placeholder="Enter OpenAI API Key"
               secureTextEntry={true}
             />
-            {apiKey.length > 0 && apiUrl.length > 0 && (
-              <View style={styles.proxySwitchContainer}>
-                <Text style={styles.proxyLabel}>Use Proxy</Text>
-                <Switch
-                  style={[isMac ? styles.switch : {}]}
-                  value={openAIProxyEnabled}
-                  onValueChange={toggleOpenAIProxy}
-                />
-              </View>
-            )}
             <Text style={[styles.label, styles.middleLabel]}>
               OpenAI Compatible
             </Text>
@@ -422,7 +427,18 @@ function SettingsScreen(): React.JSX.Element {
               onChangeText={setOpenAICompatModels}
               placeholder="Enter Model IDs, split by comma"
               secureTextEntry={false}
+              numberOfLines={4}
             />
+            {apiKey.length > 0 && apiUrl.length > 0 && (
+              <View style={styles.proxySwitchContainer}>
+                <Text style={styles.proxyLabel}>Use Proxy</Text>
+                <Switch
+                  style={[isMac ? styles.switch : {}]}
+                  value={openAIProxyEnabled}
+                  onValueChange={toggleOpenAIProxy}
+                />
+              </View>
+            )}
           </>
         );
       default:
@@ -464,7 +480,7 @@ function SettingsScreen(): React.JSX.Element {
 
         <Text style={[styles.label, styles.middleLabel]}>Select Model</Text>
         <CustomDropdown
-          label="Text Model"
+          label="Chat Model"
           data={textModelsData}
           value={selectedTextModel.modelId}
           onChange={(item: DropdownItem) => {
@@ -492,6 +508,22 @@ function SettingsScreen(): React.JSX.Element {
                 onValueChange={toggleThinking}
               />
             </View>
+          )}
+
+        {selectedTextModel &&
+          BedrockVoiceModels.includes(selectedTextModel.modelName) && (
+            <CustomDropdown
+              label="Voice ID"
+              data={voiceIDData}
+              value={voiceId}
+              onChange={(item: DropdownItem) => {
+                if (item.value !== '') {
+                  setVoiceId(item.value);
+                  saveVoiceId(item.value);
+                }
+              }}
+              placeholder="Select Voice ID"
+            />
           )}
 
         <CustomDropdown
@@ -660,7 +692,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   thinkingSwitchContainer: {
     flexDirection: 'row',

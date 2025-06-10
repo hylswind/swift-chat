@@ -59,6 +59,10 @@ class ModelsRequest(BaseModel):
     region: str
 
 
+class TokenRequest(BaseModel):
+    region: str
+
+
 class UpgradeRequest(BaseModel):
     os: str
     version: str
@@ -138,6 +142,26 @@ async def create_bedrock_command(request: ConverseRequest) -> tuple[boto3.client
     return client, command
 
 
+@app.post("/api/converse/v3")
+async def converse_v3(request: ConverseRequest,
+                      _: Annotated[str, Depends(verify_api_key)]):
+    try:
+        client, command = await create_bedrock_command(request)
+
+        def event_generator():
+            try:
+                response = client.converse_stream(**command)
+                for item in response['stream']:
+                    yield json.dumps(item) + '\n\n'
+            except Exception as err:
+                yield f"Error: {str(err)}"
+
+        return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+    except Exception as error:
+        return PlainTextResponse(f"Error: {str(error)}", status_code=500)
+
+
 @app.post("/api/converse/v2")
 async def converse_v2(request: ConverseRequest,
                       _: Annotated[str, Depends(verify_api_key)]):
@@ -149,31 +173,6 @@ async def converse_v2(request: ConverseRequest,
                 response = client.converse_stream(**command)
                 for item in response['stream']:
                     yield json.dumps(item)
-            except Exception as err:
-                yield f"Error: {str(err)}"
-
-        return StreamingResponse(event_generator(), media_type="text/event-stream")
-
-    except Exception as error:
-        return PlainTextResponse(f"Error: {str(error)}", status_code=500)
-
-
-@app.post("/api/converse")
-async def converse(request: ConverseRequest,
-                   _: Annotated[str, Depends(verify_api_key)]):
-    try:
-        client, command = await create_bedrock_command(request)
-
-        def event_generator():
-            try:
-                response = client.converse_stream(**command)
-                for item in response['stream']:
-                    if "contentBlockDelta" in item:
-                        text = item["contentBlockDelta"].get("delta", {}).get("text", "")
-                        if text:
-                            yield text
-                    elif "metadata" in item:
-                        yield "\n" + json.dumps(item["metadata"]["usage"])
             except Exception as err:
                 yield f"Error: {str(err)}"
 
@@ -197,6 +196,33 @@ async def gen_image(request: ImageRequest,
     if (ref_images is None or model_id.startswith("stability.")) and contains_chinese(prompt):
         prompt = get_english_prompt(client, prompt)
     return get_image(client, model_id, prompt, ref_images, width, height)
+
+
+@app.post("/api/token")
+async def get_token(request: TokenRequest,
+                    _: Annotated[str, Depends(verify_api_key)]):
+    region = request.region
+    try:
+        client_role_arn = os.environ.get('CLIENT_ROLE_ARN')
+        if not client_role_arn:
+            return {"error": "CLIENT_ROLE_ARN environment variable not set"}
+        sts_client = boto3.client('sts', region_name=region)
+        session_name = f"SwiftChatClient-{int(time.time())}"
+        response = sts_client.assume_role(
+            RoleArn=client_role_arn,
+            RoleSessionName=session_name,
+            DurationSeconds=3600
+        )
+        credentials = response['Credentials']
+        return {
+            "accessKeyId": credentials['AccessKeyId'],
+            "secretAccessKey": credentials['SecretAccessKey'],
+            "sessionToken": credentials['SessionToken'],
+            "expiration": credentials['Expiration'].isoformat()
+        }
+    except Exception as e:
+        print(f"Error assuming role: {e}")
+        return {"error": str(e)}
 
 
 @app.post("/api/models")
@@ -260,24 +286,31 @@ async def upgrade(request: UpgradeRequest,
     return {"needUpgrade": need_upgrade, "version": new_version, "url": url}
 
 
-@app.post("/api/gpt")
-async def converse_gpt(request: GPTRequest, raw_request: FastAPIRequest):
+@app.post("/api/openai")
+async def converse_openai(request: GPTRequest, raw_request: FastAPIRequest):
     auth_header = raw_request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Invalid auth header")
     openai_api_key = auth_header.split(" ")[1]
+    request_url = raw_request.headers.get("request_url")
+    if not request_url or not request_url.startswith("http"):
+        raise HTTPException(status_code=401, detail="Invalid request url")
+    http_referer = raw_request.headers.get("HTTP-Referer")
+    x_title = raw_request.headers.get("X-Title")
 
     async def event_generator():
         async with httpx.AsyncClient() as client:
             try:
                 async with client.stream(
                         "POST",
-                        "https://api.openai.com/v1/chat/completions",
+                        request_url,
                         json=request.model_dump(),
                         headers={
                             "Authorization": f"Bearer {openai_api_key}",
                             "Content-Type": "application/json",
-                            "Accept": "text/event-stream"
+                            "Accept": "text/event-stream",
+                            **({"HTTP-Referer": http_referer} if http_referer else {}),
+                            **({"X-Title": x_title} if x_title else {})
                         }
                 ) as response:
                     async for line in response.aiter_bytes():
