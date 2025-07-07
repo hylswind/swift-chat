@@ -10,7 +10,6 @@ import {
 } from '../storage/StorageUtils.ts';
 import {
   BedrockMessage,
-  DocumentContent,
   ImageContent,
   OpenAIMessage,
   TextContent,
@@ -295,18 +294,6 @@ function getOpenAIMessages(
               };
             }
           }),
-        };
-      }
-      const hasDoc = message.content.some(content => 'document' in content);
-      if (hasDoc) {
-        const text = message.content.find(
-          content => 'text' in content
-        ) as TextContent;
-        const doc = message.content.find(content => 'document' in content);
-        const docContent = (doc as DocumentContent).document.source.bytes;
-        return {
-          role: message.role,
-          content: text.text + '\nDocument base64 is:\n ' + docContent,
         };
       }
       return {
