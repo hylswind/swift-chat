@@ -16,12 +16,10 @@ jobs:
       #     gem install xcpretty
       - name: Run build ios
         run: |
+          gem update cocoapods
+          pod update
           cd react-native && npm i
-          cd ios 
-          rm -rf ~/Library/Caches/Cocoapods
-          rm -rf ~/Library/Developer/Xcode/DerivedData
-          pod install
-          cd ..
+          cd ios && pod install && cd ..
           npm run build:ios
       - name: Upload artifact
         uses: actions/upload-artifact@v4
