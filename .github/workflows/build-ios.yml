@@ -20,8 +20,6 @@ jobs:
           cd ios 
           rm -rf ~/Library/Caches/Cocoapods
           rm -rf ~/Library/Developer/Xcode/DerivedData
-          pod deintegrate
-          pod setup
           pod install
           cd ..
           npm run build:ios
