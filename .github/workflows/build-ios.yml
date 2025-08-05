@@ -17,7 +17,13 @@ jobs:
       - name: Run build ios
         run: |
           cd react-native && npm i
-          cd ios && pod install && cd ..
+          cd ios 
+          rm -rf ~/Library/Caches/Cocoapods
+          rm -rf ~/Library/Developer/Xcode/DerivedData
+          pod deintegrate
+          pod setup
+          pod install
+          cd ..
           npm run build:ios
       - name: Upload artifact
         uses: actions/upload-artifact@v4
