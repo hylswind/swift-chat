@@ -8,12 +8,12 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: '3.4'
-      - name: Install xcpretty
-        run: |
-          gem install xcpretty
+      # - uses: ruby/setup-ruby@v1
+      #   with:
+      #     ruby-version: '3.4'
+      # - name: Install xcpretty
+      #   run: |
+      #     gem install xcpretty
       - name: Run build ios
         run: |
           cd react-native && npm i
