@@ -1,10 +1,7 @@
 name: Build for iOS
 
 on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+  workflow_dispatch:
 
 jobs:
   build-ios:
@@ -16,3 +13,8 @@ jobs:
           cd react-native && npm i
           cd ios && pod install && cd ..
           npm run build:ios
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SwiftChat
+          path: react-native/ios/build/*.*
