@@ -8,17 +8,10 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      # - uses: ruby/setup-ruby@v1
-      #   with:
-      #     ruby-version: '3.4'
-      # - name: Install xcpretty
-      #   run: |
-      #     gem install xcpretty
       - name: Run build ios
         run: |
-          gem update cocoapods
           cd react-native && npm i
-          cd ios && pod deintegrate && pod update && cd ..
+          cd ios && pod deintegrate && pod install && cd ..
           npm run build:ios
       - name: Upload artifact
         uses: actions/upload-artifact@v4
