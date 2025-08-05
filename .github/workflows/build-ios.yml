@@ -18,7 +18,7 @@ jobs:
         run: |
           gem update cocoapods
           cd react-native && npm i
-          cd ios && pod update && pod install && cd ..
+          cd ios && pod deintegrate && pod update && cd ..
           npm run build:ios
       - name: Upload artifact
         uses: actions/upload-artifact@v4
