@@ -12,7 +12,7 @@ jobs:
         run: |
           rm -rf ~/Library/Developer/Xcode/DerivedData
           cd react-native && npm i
-          cd ios && pod deintegrate && pod install && cd ..
+          cd ios && pod deintegrate && pod clean && pod install && cd ..
           npm run build:ios
       - name: Upload artifact
         uses: actions/upload-artifact@v4
