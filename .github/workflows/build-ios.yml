@@ -8,11 +8,13 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Print xcode version
+        run: |
+          xcodebuild -version
       - name: Run build ios
         run: |
-          gem install cocoapods-deintegrate cocoapods-clean
           cd react-native && npm i
-          cd ios && pod deintegrate && pod cache clean --all && rm Podfile Podfile.lock && pod install && cd ..
+          cd ios && pod deintegrate && pod install && cd ..
           npm run build:ios
       - name: Upload artifact
         uses: actions/upload-artifact@v4
