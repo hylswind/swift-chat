@@ -10,9 +10,10 @@ jobs:
       - uses: actions/checkout@v4
       - name: Run build ios
         run: |
+          gem install cocoapods-clean
           rm -rf ~/Library/Developer/Xcode/DerivedData
           cd react-native && npm i
-          cd ios && rm Podfile.lock && pod install && cd ..
+          cd ios && pod deintegrate && pod clean && pod install && cd ..
           npm run build:ios
       - name: Upload artifact
         uses: actions/upload-artifact@v4
