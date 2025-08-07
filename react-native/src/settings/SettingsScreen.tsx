@@ -593,7 +593,7 @@ function SettingsScreen(): React.JSX.Element {
             />
           </View>
         )}
-{/*         <TouchableOpacity
+        {/* <TouchableOpacity
           activeOpacity={1}
           style={styles.itemContainer}
           onPress={() => Linking.openURL(GITHUB_LINK)}>
@@ -644,7 +644,7 @@ function SettingsScreen(): React.JSX.Element {
         <TouchableOpacity
           style={styles.versionContainer}
           activeOpacity={1}
-{/*           onPress={handleCheckUpgrade} */}
+          // onPress={handleCheckUpgrade}
           >
           <Text style={styles.label}>App Version</Text>
           <View style={styles.arrowContainer}>
@@ -654,7 +654,7 @@ function SettingsScreen(): React.JSX.Element {
                   ? ' (' + upgradeInfo.version + ')'
                   : '')}
             </Text>
-{/*             <Image
+            {/* <Image
               style={styles.arrowImage}
               source={
                 isDark
