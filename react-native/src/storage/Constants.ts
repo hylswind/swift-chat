@@ -24,6 +24,14 @@ const RegionList = [
 export const DefaultRegion = 'us-west-2';
 
 export const GPTModels = [
+  { modelName: 'GPT-5', modelId: 'gpt-5', modelTag: ModelTag.OpenAI },
+  {
+    modelName: 'GPT-5-chat',
+    modelId: 'gpt-5-chat-latest',
+    modelTag: ModelTag.OpenAI,
+  },
+  { modelName: 'GPT-5-mini', modelId: 'gpt-5-mini', modelTag: ModelTag.OpenAI },
+  { modelName: 'GPT-5-nano', modelId: 'gpt-5-nano', modelTag: ModelTag.OpenAI },
   { modelName: 'GPT-4.1', modelId: 'gpt-4.1', modelTag: ModelTag.OpenAI },
   {
     modelName: 'GPT-4.1-mini',
@@ -91,12 +99,60 @@ export const VoiceIDList = [
     voiceId: 'amy',
   },
   {
+    voiceName: 'Ambre (French)',
+    voiceId: 'ambre',
+  },
+  {
+    voiceName: 'Florian (French)',
+    voiceId: 'florian',
+  },
+  {
+    voiceName: 'Beatrice (Italian)',
+    voiceId: 'beatrice',
+  },
+  {
+    voiceName: 'Lorenzo (Italian)',
+    voiceId: 'lorenzo',
+  },
+  {
+    voiceName: 'Greta (German)',
+    voiceId: 'greta',
+  },
+  {
+    voiceName: 'Lennart (German)',
+    voiceId: 'lennart',
+  },
+  {
     voiceName: 'Lupe (Spanish)',
     voiceId: 'lupe',
   },
   {
     voiceName: 'Carlos (Spanish)',
     voiceId: 'carlos',
+  },
+];
+
+export const DefaultImageSystemPrompts = [
+  {
+    id: -7,
+    name: 'Virtual try-on',
+    prompt: 'Virtual try-on',
+    includeHistory: false,
+    promptType: 'image',
+  },
+  {
+    id: -8,
+    name: 'Variations',
+    prompt: 'Generate similar style of the image',
+    includeHistory: false,
+    promptType: 'image',
+  },
+  {
+    id: -9,
+    name: 'RemoveBG',
+    prompt: 'Remove background of the image',
+    includeHistory: false,
+    promptType: 'image',
   },
 ];
 
@@ -174,6 +230,7 @@ Stay focused on practical improvements only.`,
     includeHistory: true,
   },
   ...DefaultVoiceSystemPrompts,
+  ...DefaultImageSystemPrompts,
 ];
 
 export const DefaultVoicePrompt =
