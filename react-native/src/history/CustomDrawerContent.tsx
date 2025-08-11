@@ -154,8 +154,8 @@ const CustomDrawerContent: React.FC<DrawerContentComponentProps> = ({
               <Image
                 source={
                   isDark
-                    ? require('../assets/bedrock_dark.png')
-                    : require('../assets/bedrock.png')
+                    ? require('../assets/sugarapple_dark.png')
+                    : require('../assets/sugarapple.png')
                 }
                 style={styles.settingsLeftImg}
               />
